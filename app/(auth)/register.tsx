@@ -1,0 +1,201 @@
+import { useAuth } from '@features/auth/presentation/hooks/useAuth';
+import { Link } from 'expo-router';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+type Role = 'cliente' | 'vendedor';
+
+export default function RegisterScreen() {
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
+  const [role, setRole]         = useState<Role>('cliente');
+  const { register, isLoading, error } = useAuth();
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView
+        contentContainerStyle={styles.container}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <Text style={styles.logoEmoji}>🛍️</Text>
+          </View>
+          <Text style={styles.title}>Crea tu cuenta</Text>
+        </View>
+
+        {/* Error */}
+        {error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠️ {error}</Text>
+          </View>
+        )}
+
+        {/* Selector de rol */}
+        <Text style={styles.roleLabel}>¿Cómo quieres usar ShopChat?</Text>
+        <View style={styles.roleRow}>
+          {/* Tarjeta Cliente */}
+          <TouchableOpacity
+            style={[
+              styles.roleCard,
+              role === 'cliente' && styles.roleCardActiveTeal,
+            ]}
+            onPress={() => setRole('cliente')}
+            activeOpacity={0.8}
+          >
+            {role === 'cliente' && (
+              <Text style={[styles.roleCheck, { color: '#00A699' }]}>✓</Text>
+            )}
+            <Text style={styles.roleEmoji}>🛒</Text>
+            <Text style={[
+              styles.roleCardTitle,
+              role === 'cliente' && { color: '#00A699' },
+            ]}>
+              CLIENTE
+            </Text>
+            <Text style={styles.roleCardDesc}>Consulta y compra</Text>
+          </TouchableOpacity>
+
+          {/* Tarjeta Vendedor */}
+          <TouchableOpacity
+            style={[
+              styles.roleCard,
+              role === 'vendedor' && styles.roleCardActiveCoral,
+            ]}
+            onPress={() => setRole('vendedor')}
+            activeOpacity={0.8}
+          >
+            {role === 'vendedor' && (
+              <Text style={[styles.roleCheck, { color: '#FF385C' }]}>✓</Text>
+            )}
+            <Text style={styles.roleEmoji}>🏪</Text>
+            <Text style={[
+              styles.roleCardTitle,
+              role === 'vendedor' && { color: '#FF385C' },
+            ]}>
+              VENDEDOR
+            </Text>
+            <Text style={styles.roleCardDesc}>Vende y atiende</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Formulario */}
+        <View style={styles.form}>
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputIcon}>👤</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Nombre de usuario"
+              placeholderTextColor="#B0B0B0"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputIcon}>✉️</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Correo electrónico"
+              placeholderTextColor="#B0B0B0"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+          </View>
+
+          <View style={styles.inputWrapper}>
+            <Text style={styles.inputIcon}>🔒</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Contraseña (mín. 6 caracteres)"
+              placeholderTextColor="#B0B0B0"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+        </View>
+
+        {/* Botón */}
+        <TouchableOpacity
+          style={[styles.btnPrimary, isLoading && styles.btnDisabled]}
+          onPress={() => register({ email, password, username, role })}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading
+            ? <ActivityIndicator color="#fff" />
+            : <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
+          }
+        </TouchableOpacity>
+
+        {/* Link login */}
+        <Link href="/(auth)/login" asChild>
+          <TouchableOpacity style={styles.linkBtn}>
+            <Text style={styles.linkText}>
+              ¿Ya tienes cuenta?{' '}
+              <Text style={styles.linkAccent}>Inicia sesión</Text>
+            </Text>
+          </TouchableOpacity>
+        </Link>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const CORAL = '#FF385C';
+
+const styles = StyleSheet.create({
+  flex:                 { flex: 1, backgroundColor: '#FCFAF8' },
+  container:            { flexGrow: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 40 },
+
+  header:               { alignItems: 'center', marginBottom: 28 },
+  logoCircle:           { width: 64, height: 64, borderRadius: 32, backgroundColor: '#FFF0F2', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  logoEmoji:            { fontSize: 28 },
+  title:                { fontSize: 28, fontWeight: '800', color: '#222222', letterSpacing: -0.5 },
+
+  errorBox:             { backgroundColor: '#FFF0F2', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: CORAL },
+  errorText:            { color: CORAL, fontSize: 13, fontWeight: '500' },
+
+  roleLabel:            { fontSize: 14, color: '#717171', fontWeight: '600', marginBottom: 12 },
+  roleRow:              { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  roleCard:             { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 12, padding: 16, alignItems: 'center', backgroundColor: '#FFFFFF', position: 'relative' },
+  roleCardActiveTeal:   { borderColor: '#00A699', backgroundColor: 'rgba(0, 166, 153, 0.04)' },
+  roleCardActiveCoral:  { borderColor: CORAL, backgroundColor: 'rgba(255, 56, 92, 0.04)' },
+  roleCheck:            { position: 'absolute', top: 8, right: 10, fontSize: 13, fontWeight: '800' },
+  roleEmoji:            { fontSize: 30, marginBottom: 6 },
+  roleCardTitle:        { fontSize: 12, fontWeight: '700', color: '#222222', letterSpacing: 0.5, textTransform: 'uppercase' },
+  roleCardDesc:         { fontSize: 11, color: '#717171', marginTop: 3 },
+
+  form:                 { marginBottom: 20, gap: 4 },
+  inputWrapper:         { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderBottomColor: '#DDDDDD', paddingVertical: 14, gap: 12 },
+  inputIcon:            { fontSize: 18, width: 24, textAlign: 'center' },
+  input:                { flex: 1, fontSize: 16, color: '#222222', paddingVertical: 0 },
+
+  btnPrimary:           { backgroundColor: CORAL, borderRadius: 100, height: 54, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3, marginTop: 8 },
+  btnDisabled:          { opacity: 0.7 },
+  btnPrimaryText:       { color: '#fff', fontSize: 16, fontWeight: '700' },
+
+  linkBtn:              { marginTop: 24, alignItems: 'center' },
+  linkText:             { fontSize: 14, color: '#717171' },
+  linkAccent:           { color: CORAL, fontWeight: '700' },
+});

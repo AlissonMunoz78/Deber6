@@ -1,0 +1,200 @@
+import { useAuthStore } from '@features/auth/presentation/store/authStore';
+import { Message } from '@features/chat/domain/entities/Message';
+import { useChat } from '@features/chat/presentation/hooks/useChat';
+import { useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+const CORAL = '#FF385C';
+const TEAL  = '#00A699';
+
+export default function ChatScreen() {
+  const { roomId }   = useLocalSearchParams<{ roomId: string }>();
+  const { messages, sendMessage } = useChat(roomId);
+  const user         = useAuthStore((s) => s.user);
+  const [input, setInput] = useState('');
+  const listRef      = useRef<FlatList>(null);
+
+  const isVendedor   = user?.role === 'vendedor';
+  const myBubbleColor = isVendedor ? CORAL : TEAL;
+
+  useEffect(() => {
+    if (messages.length > 0) listRef.current?.scrollToEnd({ animated: true });
+  }, [messages.length]);
+
+  const handleSend = useCallback(() => {
+    if (!input.trim()) return;
+    sendMessage(input.trim());
+    setInput('');
+  }, [input, sendMessage]);
+
+  const renderMsg = ({ item }: { item: Message }) => {
+    const isOwn = item.userId === user?.id;
+    return (
+      <View style={[styles.msgRow, isOwn && styles.msgRowOwn]}>
+        {/* Avatar ajeno */}
+        {!isOwn && (
+          <View style={[styles.avatar, { backgroundColor: TEAL }]}>
+            <Text style={styles.avatarText}>
+              {item.authorUsername?.[0]?.toUpperCase() ?? '?'}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.msgColumn}>
+          {/* Nombre autor (solo mensajes ajenos) */}
+          {!isOwn && (
+            <Text style={styles.authorName}>{item.authorUsername}</Text>
+          )}
+
+          {/* Burbuja */}
+          <View style={[
+            styles.bubble,
+            isOwn
+              ? [styles.bubbleOwn, { backgroundColor: myBubbleColor }]
+              : styles.bubbleOther,
+          ]}>
+            <Text style={[styles.msgText, isOwn && styles.msgTextOwn]}>
+              {item.content}
+            </Text>
+            <View style={styles.msgMeta}>
+              <Text style={[styles.msgTime, isOwn && styles.msgTimeOwn]}>
+                {item.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </Text>
+              {isOwn && <Text style={styles.msgCheck}>✓✓</Text>}
+            </View>
+          </View>
+        </View>
+
+        {/* Avatar propio */}
+        {isOwn && (
+          <View style={[styles.avatar, { backgroundColor: myBubbleColor }]}>
+            <Text style={styles.avatarText}>
+              {user?.username?.[0]?.toUpperCase() ?? '?'}
+            </Text>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={90}
+    >
+      {/* Banner de rol */}
+      <View style={[
+        styles.roleBanner,
+        { backgroundColor: isVendedor ? '#FFF5F6' : '#F0FAF9' },
+      ]}>
+        <Text style={[styles.roleBannerText, { color: isVendedor ? CORAL : TEAL }]}>
+          {isVendedor ? '🏪 Respondiendo como Vendedor' : '🛒 Consultando como Cliente'}
+        </Text>
+      </View>
+
+      {/* Mensajes */}
+      <FlatList
+        ref={listRef}
+        data={messages}
+        keyExtractor={(m) => m.id}
+        renderItem={renderMsg}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={
+          <View style={styles.emptyChat}>
+            <Text style={{ fontSize: 48 }}>💬</Text>
+            <Text style={styles.emptyChatText}>
+              {isVendedor
+                ? 'Esperando preguntas del cliente...'
+                : '¡Haz tu primera pregunta al vendedor!'}
+            </Text>
+          </View>
+        }
+      />
+
+      {/* Input */}
+      <View style={styles.inputArea}>
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            value={input}
+            onChangeText={setInput}
+            placeholder={isVendedor ? 'Responde al cliente...' : '¿Tienes alguna pregunta?'}
+            placeholderTextColor="#BBBBBB"
+            multiline
+            maxLength={500}
+          />
+        </View>
+        <TouchableOpacity
+          style={[
+            styles.sendBtn,
+            { backgroundColor: input.trim() ? myBubbleColor : '#EBEBEB' },
+          ]}
+          onPress={handleSend}
+          disabled={!input.trim()}
+          activeOpacity={0.85}
+        >
+          <Text style={[
+            styles.sendIcon,
+            { color: input.trim() ? '#fff' : '#BBBBBB' },
+          ]}>
+            ➤
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container:      { flex: 1, backgroundColor: '#F7F7F7' },
+
+  // Banner rol
+  roleBanner:     { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EBEBEB' },
+  roleBannerText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+
+  // Lista
+  listContent:    { padding: 16, gap: 6, paddingBottom: 12 },
+
+  // Empty
+  emptyChat:      { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
+  emptyChatText:  { fontSize: 14, color: '#717171', textAlign: 'center', maxWidth: 200 },
+
+  // Fila de mensaje
+  msgRow:         { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
+  msgRowOwn:      { justifyContent: 'flex-end' },
+  msgColumn:      { maxWidth: '72%', gap: 3 },
+
+  // Avatar
+  avatar:         { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatarText:     { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+  // Burbujas
+  bubble:         { padding: 12, borderRadius: 18 },
+  bubbleOwn:      { borderBottomRightRadius: 4 },
+  bubbleOther:    { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB', borderBottomLeftRadius: 4 },
+  authorName:     { fontSize: 11, fontWeight: '700', color: '#717171', marginLeft: 2 },
+  msgText:        { fontSize: 15, color: '#1B1C1C', lineHeight: 20 },
+  msgTextOwn:     { color: '#fff' },
+  msgMeta:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
+  msgTime:        { fontSize: 10, color: '#BBBBBB' },
+  msgTimeOwn:     { color: 'rgba(255,255,255,0.7)' },
+  msgCheck:       { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
+
+  // Input area
+  inputArea:      { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 10 },
+  inputWrapper:   { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 24, backgroundColor: '#F7F7F7', paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
+  input:          { fontSize: 15, color: '#222222' },
+  sendBtn:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  sendIcon:       { fontSize: 16 },
+});
