@@ -1,4 +1,3 @@
-// src/shared/infrastructure/supabase/client.ts
 import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 
@@ -16,6 +15,12 @@ export const supabase = createClient(
       storage: SecureStoreAdapter,
       autoRefreshToken: true,
       persistSession: true,
+      detectSessionInUrl: false,
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10,
+      },
     },
   }
 );

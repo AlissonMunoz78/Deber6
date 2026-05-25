@@ -1,6 +1,7 @@
 import { useAuth } from '@features/auth/presentation/hooks/useAuth';
 import { Link } from 'expo-router';
 import { useState } from 'react';
+import LottieView from 'lottie-react-native';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -34,9 +35,12 @@ export default function LoginScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoEmoji}>🛍️</Text>
-          </View>
+          <LottieView
+            source={require('../../assets/animations/shopchat.json')}
+            autoPlay
+            loop
+            style={styles.lottie}
+          />
           <Text style={styles.title}>ShopChat</Text>
           <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
         </View>
@@ -96,7 +100,7 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Botón Google (visual, sin funcionalidad real) */}
+        {/* Botón Google (visual) */}
         <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
           <Text style={styles.btnGoogleIcon}>G</Text>
           <Text style={styles.btnGoogleText}>Continuar con Google</Text>
@@ -119,48 +123,39 @@ export default function LoginScreen() {
 const CORAL = '#FF385C';
 
 const styles = StyleSheet.create({
-  flex:            { flex: 1, backgroundColor: '#FFFFFF' },
+  flex:           { flex: 1, backgroundColor: '#FFFFFF' },
 
-  // Blobs decorativos
-  blobTopRight:    { position: 'absolute', top: -80, right: -60, width: 300, height: 300, borderRadius: 150, backgroundColor: '#FFF0F2', opacity: 0.5 },
-  blobBottomLeft:  { position: 'absolute', bottom: -60, left: -40, width: 240, height: 240, borderRadius: 120, backgroundColor: '#F7F7F7', opacity: 0.6 },
+  blobTopRight:   { position: 'absolute', top: -80, right: -60, width: 300, height: 300, borderRadius: 150, backgroundColor: '#a52a3adb', opacity: 0.5 },
+  blobBottomLeft: { position: 'absolute', bottom: -60, left: -40, width: 240, height: 240, borderRadius: 120, backgroundColor: '#a52a3adb', opacity: 0.6 },
 
-  container:       { flexGrow: 1, paddingHorizontal: 24, paddingTop: 80, paddingBottom: 40, justifyContent: 'center' },
+  container:      { flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40, justifyContent: 'center' },
 
-  // Header
-  header:          { alignItems: 'center', marginBottom: 40 },
-  logoCircle:      { width: 72, height: 72, borderRadius: 36, backgroundColor: '#FFF0F2', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  logoEmoji:       { fontSize: 32 },
-  title:           { fontSize: 32, fontWeight: '800', color: '#222222', letterSpacing: -0.5, marginBottom: 4 },
-  subtitle:        { fontSize: 16, fontWeight: '500', color: '#717171' },
+  header:         { alignItems: 'center', marginBottom: 32 },
+  lottie:         { width: 160, height: 160, marginBottom: 4 },
+  title:          { fontSize: 32, fontWeight: '800', color: '#222222', letterSpacing: -0.5, marginBottom: 4 },
+  subtitle:       { fontSize: 16, fontWeight: '500', color: '#717171' },
 
-  // Error
-  errorBox:        { backgroundColor: '#FFF0F2', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: CORAL },
-  errorText:       { color: CORAL, fontSize: 13, fontWeight: '500' },
+  errorBox:       { backgroundColor: '#FFF0F2', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: CORAL },
+  errorText:      { color: CORAL, fontSize: 13, fontWeight: '500' },
 
-  // Formulario
-  form:            { marginBottom: 20, gap: 4 },
-  inputWrapper:    { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderBottomColor: '#DDDDDD', paddingVertical: 14, gap: 12 },
-  inputIcon:       { fontSize: 18, width: 24, textAlign: 'center' },
-  input:           { flex: 1, fontSize: 16, color: '#222222', paddingVertical: 0 },
+  form:           { marginBottom: 20, gap: 4 },
+  inputWrapper:   { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderBottomColor: '#DDDDDD', paddingVertical: 14, gap: 12 },
+  inputIcon:      { fontSize: 18, width: 24, textAlign: 'center' },
+  input:          { flex: 1, fontSize: 16, color: '#222222', paddingVertical: 0 },
 
-  // Botón principal
-  btnPrimary:      { backgroundColor: CORAL, borderRadius: 8, height: 54, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 4, marginTop: 8 },
-  btnDisabled:     { opacity: 0.7 },
-  btnPrimaryText:  { color: '#fff', fontSize: 16, fontWeight: '700' },
+  btnPrimary:     { backgroundColor: CORAL, borderRadius: 8, height: 54, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 4, marginTop: 8 },
+  btnDisabled:    { opacity: 0.7 },
+  btnPrimaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
 
-  // Divisor
-  divider:         { flexDirection: 'row', alignItems: 'center', marginVertical: 24, gap: 12 },
-  dividerLine:     { flex: 1, height: 1, backgroundColor: '#EBEBEB' },
-  dividerText:     { fontSize: 12, color: '#717171', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  divider:        { flexDirection: 'row', alignItems: 'center', marginVertical: 24, gap: 12 },
+  dividerLine:    { flex: 1, height: 1, backgroundColor: '#EBEBEB' },
+  dividerText:    { fontSize: 12, color: '#717171', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
 
-  // Botón Google
-  btnGoogle:       { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 54, borderWidth: 1.5, borderColor: '#222222', borderRadius: 8, gap: 10, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  btnGoogleIcon:   { fontSize: 18, fontWeight: '900', color: '#4285F4' },
-  btnGoogleText:   { fontSize: 16, fontWeight: '600', color: '#222222' },
+  btnGoogle:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 54, borderWidth: 1.5, borderColor: '#222222', borderRadius: 8, gap: 10, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
+  btnGoogleIcon:  { fontSize: 18, fontWeight: '900', color: '#f44242' },
+  btnGoogleText:  { fontSize: 16, fontWeight: '600', color: '#222222' },
 
-  // Link
-  linkBtn:         { marginTop: 28, alignItems: 'center' },
-  linkText:        { fontSize: 14, color: '#222222' },
-  linkAccent:      { fontWeight: '700', textDecorationLine: 'underline' },
+  linkBtn:        { marginTop: 28, alignItems: 'center' },
+  linkText:       { fontSize: 14, color: '#222222' },
+  linkAccent:     { fontWeight: '700', textDecorationLine: 'underline' },
 });

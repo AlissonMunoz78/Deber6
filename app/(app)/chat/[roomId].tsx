@@ -1,10 +1,13 @@
 import { useAuthStore } from '@features/auth/presentation/store/authStore';
 import { Message } from '@features/chat/domain/entities/Message';
 import { useChat } from '@features/chat/presentation/hooks/useChat';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -18,24 +21,50 @@ const CORAL = '#FF385C';
 const TEAL  = '#00A699';
 
 export default function ChatScreen() {
-  const { roomId }   = useLocalSearchParams<{ roomId: string }>();
-  const { messages, sendMessage } = useChat(roomId);
-  const user         = useAuthStore((s) => s.user);
-  const [input, setInput] = useState('');
-  const listRef      = useRef<FlatList>(null);
+  const { roomId }                    = useLocalSearchParams<{ roomId: string }>();
+  const { messages, sendMessage }     = useChat(roomId);
+  const user                          = useAuthStore((s) => s.user);
+  const [input, setInput]             = useState('');
+  const [imageUri, setImageUri]       = useState<string | null>(null);
+  const listRef                       = useRef<FlatList>(null);
 
-  const isVendedor   = user?.role === 'vendedor';
+  const isVendedor    = user?.role === 'vendedor';
   const myBubbleColor = isVendedor ? CORAL : TEAL;
 
   useEffect(() => {
     if (messages.length > 0) listRef.current?.scrollToEnd({ animated: true });
   }, [messages.length]);
 
+  const handlePickImage = useCallback(async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para enviar fotos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.7,
+      allowsEditing: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+    }
+  }, []);
+
   const handleSend = useCallback(() => {
-    if (!input.trim()) return;
-    sendMessage(input.trim());
+    const text = input.trim();
+    if (!text && !imageUri) return;
+
+    if (imageUri) {
+      sendMessage(text ? `📷 [Imagen] ${text}` : '📷 [Imagen]');
+      setImageUri(null);
+    } else {
+      sendMessage(text);
+    }
     setInput('');
-  }, [input, sendMessage]);
+  }, [input, imageUri, sendMessage]);
+
+  const handleCancelImage = () => setImageUri(null);
 
   const renderMsg = ({ item }: { item: Message }) => {
     const isOwn = item.userId === user?.id;
@@ -51,12 +80,9 @@ export default function ChatScreen() {
         )}
 
         <View style={styles.msgColumn}>
-          {/* Nombre autor (solo mensajes ajenos) */}
           {!isOwn && (
             <Text style={styles.authorName}>{item.authorUsername}</Text>
           )}
-
-          {/* Burbuja */}
           <View style={[
             styles.bubble,
             isOwn
@@ -122,8 +148,28 @@ export default function ChatScreen() {
         }
       />
 
+      {/* Preview imagen seleccionada */}
+      {imageUri && (
+        <View style={styles.imagePreviewBox}>
+          <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+          <TouchableOpacity style={styles.imageCancelBtn} onPress={handleCancelImage}>
+            <Text style={styles.imageCancelText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={styles.imagePreviewLabel}>Imagen lista para enviar</Text>
+        </View>
+      )}
+
       {/* Input */}
       <View style={styles.inputArea}>
+        {/* Botón foto */}
+        <TouchableOpacity
+          style={[styles.photoBtn, { backgroundColor: myBubbleColor + '20' }]}
+          onPress={handlePickImage}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.photoBtnIcon, { color: myBubbleColor }]}>📷</Text>
+        </TouchableOpacity>
+
         <View style={styles.inputWrapper}>
           <TextInput
             style={styles.input}
@@ -135,18 +181,19 @@ export default function ChatScreen() {
             maxLength={500}
           />
         </View>
+
         <TouchableOpacity
           style={[
             styles.sendBtn,
-            { backgroundColor: input.trim() ? myBubbleColor : '#EBEBEB' },
+            { backgroundColor: (input.trim() || imageUri) ? myBubbleColor : '#EBEBEB' },
           ]}
           onPress={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() && !imageUri}
           activeOpacity={0.85}
         >
           <Text style={[
             styles.sendIcon,
-            { color: input.trim() ? '#fff' : '#BBBBBB' },
+            { color: (input.trim() || imageUri) ? '#fff' : '#BBBBBB' },
           ]}>
             ➤
           </Text>
@@ -157,44 +204,45 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:      { flex: 1, backgroundColor: '#F7F7F7' },
+  container:         { flex: 1, backgroundColor: '#F7F7F7' },
 
-  // Banner rol
-  roleBanner:     { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EBEBEB' },
-  roleBannerText: { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  roleBanner:        { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EBEBEB' },
+  roleBannerText:    { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
 
-  // Lista
-  listContent:    { padding: 16, gap: 6, paddingBottom: 12 },
+  listContent:       { padding: 16, gap: 6, paddingBottom: 12 },
 
-  // Empty
-  emptyChat:      { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
-  emptyChatText:  { fontSize: 14, color: '#717171', textAlign: 'center', maxWidth: 200 },
+  emptyChat:         { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
+  emptyChatText:     { fontSize: 14, color: '#717171', textAlign: 'center', maxWidth: 200 },
 
-  // Fila de mensaje
-  msgRow:         { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
-  msgRowOwn:      { justifyContent: 'flex-end' },
-  msgColumn:      { maxWidth: '72%', gap: 3 },
+  msgRow:            { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
+  msgRowOwn:         { justifyContent: 'flex-end' },
+  msgColumn:         { maxWidth: '72%', gap: 3 },
 
-  // Avatar
-  avatar:         { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  avatarText:     { color: '#fff', fontSize: 13, fontWeight: '800' },
+  avatar:            { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
+  avatarText:        { color: '#fff', fontSize: 13, fontWeight: '800' },
 
-  // Burbujas
-  bubble:         { padding: 12, borderRadius: 18 },
-  bubbleOwn:      { borderBottomRightRadius: 4 },
-  bubbleOther:    { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB', borderBottomLeftRadius: 4 },
-  authorName:     { fontSize: 11, fontWeight: '700', color: '#717171', marginLeft: 2 },
-  msgText:        { fontSize: 15, color: '#1B1C1C', lineHeight: 20 },
-  msgTextOwn:     { color: '#fff' },
-  msgMeta:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
-  msgTime:        { fontSize: 10, color: '#BBBBBB' },
-  msgTimeOwn:     { color: 'rgba(255,255,255,0.7)' },
-  msgCheck:       { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
+  bubble:            { padding: 12, borderRadius: 18 },
+  bubbleOwn:         { borderBottomRightRadius: 4 },
+  bubbleOther:       { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB', borderBottomLeftRadius: 4 },
+  authorName:        { fontSize: 11, fontWeight: '700', color: '#717171', marginLeft: 2 },
+  msgText:           { fontSize: 15, color: '#1B1C1C', lineHeight: 20 },
+  msgTextOwn:        { color: '#fff' },
+  msgMeta:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
+  msgTime:           { fontSize: 10, color: '#BBBBBB' },
+  msgTimeOwn:        { color: 'rgba(255,255,255,0.7)' },
+  msgCheck:          { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
 
-  // Input area
-  inputArea:      { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 10 },
-  inputWrapper:   { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 24, backgroundColor: '#F7F7F7', paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
-  input:          { fontSize: 15, color: '#222222' },
-  sendBtn:        { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  sendIcon:       { fontSize: 16 },
+  imagePreviewBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 10 },
+  imagePreview:      { width: 48, height: 48, borderRadius: 8 },
+  imageCancelBtn:    { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FF385C', justifyContent: 'center', alignItems: 'center' },
+  imageCancelText:   { color: '#fff', fontSize: 10, fontWeight: '800' },
+  imagePreviewLabel: { fontSize: 12, color: '#717171', flex: 1 },
+
+  inputArea:         { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 8 },
+  photoBtn:          { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  photoBtnIcon:      { fontSize: 20 },
+  inputWrapper:      { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 24, backgroundColor: '#F7F7F7', paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
+  input:             { fontSize: 15, color: '#222222' },
+  sendBtn:           { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  sendIcon:          { fontSize: 16 },
 });
