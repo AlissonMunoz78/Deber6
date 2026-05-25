@@ -4,7 +4,8 @@ export interface Message {
   userId:           string;
   content:          string;
   createdAt:        Date;
-  authorUsername?:  string; // Desnormalización controlada para la UI
+  authorUsername?:  string; 
+  imageUrl?:        string;
 }
 
 export interface Room {

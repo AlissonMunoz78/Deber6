@@ -17,13 +17,11 @@ function AuthGuard() {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    // Restaurar sesión al iniciar
-    authRepo.getCurrentUser().then((u) => {
-      setUser(u);
-      setIsReady(true); // Solo navegar después de conocer el estado de sesión
-    });
+    // Siempre empezar en login, sin restaurar sesión
+    setUser(null);
+    setIsReady(true);
 
-    // Escuchar cambios de sesión
+    // Escuchar cambios de sesión (login/logout en tiempo real)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         if (session) {
@@ -38,7 +36,7 @@ function AuthGuard() {
   }, []);
 
   useEffect(() => {
-    if (!isReady) return; // No navegar hasta tener el estado de sesión
+    if (!isReady) return;
 
     const inAuth = segments[0] === '(auth)';
     if (!user && !inAuth) router.replace('/(auth)/login');

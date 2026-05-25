@@ -5,13 +5,13 @@ export interface IChatRepository {
   createRoom(name: string, userId: string): Promise<Room>;
   getMessages(roomId: string): Promise<Message[]>;
   sendMessage(
-    roomId: string,
-    userId: string,
-    content: string,
+    roomId:   string,
+    userId:   string,
+    content:  string,
+    imageUrl?: string, 
   ): Promise<Message>;
-  // Devuelve la función unsubscribe, compatible con el return de useEffect
   subscribeToRoom(
-    roomId: string,
+    roomId:    string,
     onMessage: (msg: Message) => void,
   ): () => void;
 }

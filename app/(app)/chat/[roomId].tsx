@@ -21,12 +21,12 @@ const CORAL = '#FF385C';
 const TEAL  = '#00A699';
 
 export default function ChatScreen() {
-  const { roomId }                    = useLocalSearchParams<{ roomId: string }>();
-  const { messages, sendMessage }     = useChat(roomId);
-  const user                          = useAuthStore((s) => s.user);
-  const [input, setInput]             = useState('');
-  const [imageUri, setImageUri]       = useState<string | null>(null);
-  const listRef                       = useRef<FlatList>(null);
+  const { roomId }                = useLocalSearchParams<{ roomId: string }>();
+  const { messages, sendMessage, isSending } = useChat(roomId);
+  const user                      = useAuthStore((s) => s.user);
+  const [input, setInput]         = useState('');
+  const [imageUri, setImageUri]   = useState<string | null>(null);
+  const listRef                   = useRef<FlatList>(null);
 
   const isVendedor    = user?.role === 'vendedor';
   const myBubbleColor = isVendedor ? CORAL : TEAL;
@@ -51,26 +51,18 @@ export default function ChatScreen() {
     }
   }, []);
 
-  const handleSend = useCallback(() => {
+  const handleSend = useCallback(async () => {
     const text = input.trim();
     if (!text && !imageUri) return;
-
-    if (imageUri) {
-      sendMessage(text ? `📷 [Imagen] ${text}` : '📷 [Imagen]');
-      setImageUri(null);
-    } else {
-      sendMessage(text);
-    }
+    await sendMessage(text, imageUri ?? undefined);
     setInput('');
+    setImageUri(null);
   }, [input, imageUri, sendMessage]);
-
-  const handleCancelImage = () => setImageUri(null);
 
   const renderMsg = ({ item }: { item: Message }) => {
     const isOwn = item.userId === user?.id;
     return (
       <View style={[styles.msgRow, isOwn && styles.msgRowOwn]}>
-        {/* Avatar ajeno */}
         {!isOwn && (
           <View style={[styles.avatar, { backgroundColor: TEAL }]}>
             <Text style={styles.avatarText}>
@@ -89,9 +81,20 @@ export default function ChatScreen() {
               ? [styles.bubbleOwn, { backgroundColor: myBubbleColor }]
               : styles.bubbleOther,
           ]}>
-            <Text style={[styles.msgText, isOwn && styles.msgTextOwn]}>
-              {item.content}
-            </Text>
+            {/* Imagen en la burbuja */}
+            {item.imageUrl && (
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.msgImage}
+                resizeMode="cover"
+              />
+            )}
+            {/* Texto (si hay) */}
+            {!!item.content && (
+              <Text style={[styles.msgText, isOwn && styles.msgTextOwn]}>
+                {item.content}
+              </Text>
+            )}
             <View style={styles.msgMeta}>
               <Text style={[styles.msgTime, isOwn && styles.msgTimeOwn]}>
                 {item.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -101,7 +104,6 @@ export default function ChatScreen() {
           </View>
         </View>
 
-        {/* Avatar propio */}
         {isOwn && (
           <View style={[styles.avatar, { backgroundColor: myBubbleColor }]}>
             <Text style={styles.avatarText}>
@@ -148,11 +150,14 @@ export default function ChatScreen() {
         }
       />
 
-      {/* Preview imagen seleccionada */}
+      {/* Preview imagen */}
       {imageUri && (
         <View style={styles.imagePreviewBox}>
           <Image source={{ uri: imageUri }} style={styles.imagePreview} />
-          <TouchableOpacity style={styles.imageCancelBtn} onPress={handleCancelImage}>
+          <TouchableOpacity
+            style={styles.imageCancelBtn}
+            onPress={() => setImageUri(null)}
+          >
             <Text style={styles.imageCancelText}>✕</Text>
           </TouchableOpacity>
           <Text style={styles.imagePreviewLabel}>Imagen lista para enviar</Text>
@@ -161,7 +166,6 @@ export default function ChatScreen() {
 
       {/* Input */}
       <View style={styles.inputArea}>
-        {/* Botón foto */}
         <TouchableOpacity
           style={[styles.photoBtn, { backgroundColor: myBubbleColor + '20' }]}
           onPress={handlePickImage}
@@ -185,18 +189,19 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={[
             styles.sendBtn,
-            { backgroundColor: (input.trim() || imageUri) ? myBubbleColor : '#EBEBEB' },
+            { backgroundColor: (input.trim() || imageUri) && !isSending ? myBubbleColor : '#EBEBEB' },
           ]}
           onPress={handleSend}
-          disabled={!input.trim() && !imageUri}
+          disabled={(!input.trim() && !imageUri) || isSending}
           activeOpacity={0.85}
         >
-          <Text style={[
-            styles.sendIcon,
-            { color: (input.trim() || imageUri) ? '#fff' : '#BBBBBB' },
-          ]}>
-            ➤
-          </Text>
+          {isSending
+            ? <Text style={{ fontSize: 10, color: '#fff' }}>...</Text>
+            : <Text style={[
+                styles.sendIcon,
+                { color: (input.trim() || imageUri) ? '#fff' : '#BBBBBB' },
+              ]}>➤</Text>
+          }
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -221,10 +226,11 @@ const styles = StyleSheet.create({
   avatar:            { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
   avatarText:        { color: '#fff', fontSize: 13, fontWeight: '800' },
 
-  bubble:            { padding: 12, borderRadius: 18 },
+  bubble:            { padding: 12, borderRadius: 18, overflow: 'hidden' },
   bubbleOwn:         { borderBottomRightRadius: 4 },
   bubbleOther:       { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB', borderBottomLeftRadius: 4 },
   authorName:        { fontSize: 11, fontWeight: '700', color: '#717171', marginLeft: 2 },
+  msgImage:          { width: 180, height: 180, borderRadius: 10, marginBottom: 6 },
   msgText:           { fontSize: 15, color: '#1B1C1C', lineHeight: 20 },
   msgTextOwn:        { color: '#fff' },
   msgMeta:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
