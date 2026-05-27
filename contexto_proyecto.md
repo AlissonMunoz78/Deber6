@@ -16,9 +16,15 @@
 📄 ARCHIVO: .env
 ================================================
 
-EXPO_PUBLIC_SUPABASE_URL=https://hhqbimpesprnxffuqzqe.supabase.co
+EXPO_PUBLIC_SUPABASE_URL=https://wtkhjpdlgzqhbwzxacpi.supabase.co
 
-EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_a3m4A1wsQWe3zDW6lKTBgQ_jWYEHxGM
+EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_XeMJAuHoMgI6t6RrueDG-A_sFvJ9Wnf
+
+EXPO_PUBLIC_APPWRITE_ENDPOINT=https://nyc.cloud.appwrite.io/v1
+
+EXPO_PUBLIC_APPWRITE_PROJECT_ID=6a169c9a0024d6f07626
+
+EXPO_PUBLIC_APPWRITE_DB_ID=6a1743830030b52fb868
 
 ================================================
 📄 ARCHIVO: .env.d.ts
@@ -43,14 +49,6 @@ declare const process: {
 EXPO_PUBLIC_SUPABASE_URL=
 EXPO_PUBLIC_SUPABASE_ANON_KEY=
 
-
-================================================
-📄 ARCHIVO: .env.local
-================================================
-
-EXPO_PUBLIC_SUPABASE_URL=https://hhqbimpesprnxffuqzqe.supabase.co
-
-EXPO_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_a3m4A1wsQWe3zDW6lKTBgQ_jWYEHxGM
 
 ================================================
 📄 ARCHIVO: .gitignore
@@ -115,12 +113,12 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v54.0.0/ before 
 📄 ARCHIVO: app\(app)\chat\[roomId].tsx
 ================================================
 
-import { useAuthStore } from '@features/auth/presentation/store/authStore';
-import { Message } from '@features/chat/domain/entities/Message';
-import { useChat } from '@features/chat/presentation/hooks/useChat';
-import * as ImagePicker from 'expo-image-picker';
-import { useLocalSearchParams } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuthStore } from "@features/auth/presentation/store/authStore";
+import { Message } from "@features/chat/domain/entities/Message";
+import { useChat } from "@features/chat/presentation/hooks/useChat";
+import * as ImagePicker from "expo-image-picker";
+import { useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
@@ -132,20 +130,22 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
+import { IconSymbol } from "../../../components/ui/icon-symbol";
 
-const CORAL = '#FF385C';
-const TEAL  = '#00A699';
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function ChatScreen() {
-  const { roomId }                = useLocalSearchParams<{ roomId: string }>();
+  const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const { messages, sendMessage, isSending } = useChat(roomId);
-  const user                      = useAuthStore((s) => s.user);
-  const [input, setInput]         = useState('');
-  const [imageUri, setImageUri]   = useState<string | null>(null);
-  const listRef                   = useRef<FlatList>(null);
+  const user = useAuthStore((s) => s.user);
+  const [input, setInput] = useState("");
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const listRef = useRef<FlatList>(null);
 
-  const isVendedor    = user?.role === 'vendedor';
+  const isVendedor = user?.role === "vendedor";
   const myBubbleColor = isVendedor ? CORAL : TEAL;
 
   useEffect(() => {
@@ -154,8 +154,11 @@ export default function ChatScreen() {
 
   const handlePickImage = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para enviar fotos.');
+    if (status !== "granted") {
+      Alert.alert(
+        "Permiso requerido",
+        "Necesitamos acceso a tu galería para enviar fotos.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -172,9 +175,16 @@ export default function ChatScreen() {
     const text = input.trim();
     if (!text && !imageUri) return;
     await sendMessage(text, imageUri ?? undefined);
-    setInput('');
+    setInput("");
     setImageUri(null);
+    setReplyTo(null);
   }, [input, imageUri, sendMessage]);
+
+  const selectReply = (item: Message) => {
+    setReplyTo(item);
+    // bring input into view
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 120);
+  };
 
   const renderMsg = ({ item }: { item: Message }) => {
     const isOwn = item.userId === user?.id;
@@ -183,7 +193,7 @@ export default function ChatScreen() {
         {!isOwn && (
           <View style={[styles.avatar, { backgroundColor: TEAL }]}>
             <Text style={styles.avatarText}>
-              {item.authorUsername?.[0]?.toUpperCase() ?? '?'}
+              {item.authorUsername?.[0]?.toUpperCase() ?? "?"}
             </Text>
           </View>
         )}
@@ -192,12 +202,16 @@ export default function ChatScreen() {
           {!isOwn && (
             <Text style={styles.authorName}>{item.authorUsername}</Text>
           )}
-          <View style={[
-            styles.bubble,
-            isOwn
-              ? [styles.bubbleOwn, { backgroundColor: myBubbleColor }]
-              : styles.bubbleOther,
-          ]}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onLongPress={() => selectReply(item)}
+            style={[
+              styles.bubble,
+              isOwn
+                ? [styles.bubbleOwn, { backgroundColor: myBubbleColor }]
+                : styles.bubbleOther,
+            ]}
+          >
             {/* Imagen en la burbuja */}
             {item.imageUrl && (
               <Image
@@ -214,17 +228,25 @@ export default function ChatScreen() {
             )}
             <View style={styles.msgMeta}>
               <Text style={[styles.msgTime, isOwn && styles.msgTimeOwn]}>
-                {item.createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {item.createdAt.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </Text>
-              {isOwn && <Text style={styles.msgCheck}>✓✓</Text>}
+              {isOwn && (
+                <IconSymbol
+                  name="checkmark.circle"
+                  color="rgba(255,255,255,0.7)"
+                  size={12}
+                />
+              )}
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
-
         {isOwn && (
           <View style={[styles.avatar, { backgroundColor: myBubbleColor }]}>
             <Text style={styles.avatarText}>
-              {user?.username?.[0]?.toUpperCase() ?? '?'}
+              {user?.username?.[0]?.toUpperCase() ?? "?"}
             </Text>
           </View>
         )}
@@ -235,17 +257,33 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={90}
     >
       {/* Banner de rol */}
-      <View style={[
-        styles.roleBanner,
-        { backgroundColor: isVendedor ? '#FFF5F6' : '#F0FAF9' },
-      ]}>
-        <Text style={[styles.roleBannerText, { color: isVendedor ? CORAL : TEAL }]}>
-          {isVendedor ? '🏪 Respondiendo como Vendedor' : '🛒 Consultando como Cliente'}
-        </Text>
+      <View
+        style={[
+          styles.roleBanner,
+          { backgroundColor: isVendedor ? "#FFF5F6" : "#F0FAF9" },
+        ]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <IconSymbol
+            name={isVendedor ? "bag.fill" : "cart.fill"}
+            color={isVendedor ? CORAL : TEAL}
+            size={14}
+          />
+          <Text
+            style={[
+              styles.roleBannerText,
+              { color: isVendedor ? CORAL : TEAL },
+            ]}
+          >
+            {isVendedor
+              ? "Respondiendo como Vendedor"
+              : "Consultando como Cliente"}
+          </Text>
+        </View>
       </View>
 
       {/* Mensajes */}
@@ -257,15 +295,66 @@ export default function ChatScreen() {
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyChat}>
-            <Text style={{ fontSize: 48 }}>💬</Text>
+            <IconSymbol name="message.fill" color="#717171" size={48} />
             <Text style={styles.emptyChatText}>
               {isVendedor
-                ? 'Esperando preguntas del cliente...'
-                : '¡Haz tu primera pregunta al vendedor!'}
+                ? "Esperando preguntas del cliente..."
+                : "¡Haz tu primera pregunta al vendedor!"}
             </Text>
           </View>
         }
       />
+
+      {/* Reply preview (mini-thumbnail) */}
+      {replyTo && (
+        <View style={styles.replyPreview}>
+          <TouchableOpacity
+            onPress={() => {
+              const idx = messages.findIndex((m) => m.id === replyTo.id);
+              if (idx >= 0) {
+                try {
+                  listRef.current?.scrollToIndex({
+                    index: idx,
+                    animated: true,
+                    viewPosition: 0.5,
+                  });
+                } catch (e) {
+                  listRef.current?.scrollToOffset({
+                    offset: Math.max(0, idx * 80),
+                    animated: true,
+                  });
+                }
+              }
+            }}
+            style={styles.replyThumbBtn}
+          >
+            {replyTo.imageUrl ? (
+              <Image
+                source={{ uri: replyTo.imageUrl }}
+                style={styles.replyThumb}
+              />
+            ) : (
+              <IconSymbol name="camera.fill" color="#717171" size={18} />
+            )}
+          </TouchableOpacity>
+          <View style={{ flex: 1, paddingLeft: 8 }}>
+            <Text style={styles.replyAuthor}>
+              {replyTo.authorUsername ?? "Usuario"}
+            </Text>
+            <Text style={styles.replySnippet} numberOfLines={1}>
+              {replyTo.imageUrl
+                ? "Imagen"
+                : (replyTo.content ?? "").slice(0, 80)}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setReplyTo(null)}
+            style={styles.replyClose}
+          >
+            <IconSymbol name="xmark" color="#717171" size={16} />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Preview imagen */}
       {imageUri && (
@@ -275,7 +364,7 @@ export default function ChatScreen() {
             style={styles.imageCancelBtn}
             onPress={() => setImageUri(null)}
           >
-            <Text style={styles.imageCancelText}>✕</Text>
+            <IconSymbol name="xmark" color="#fff" size={12} />
           </TouchableOpacity>
           <Text style={styles.imagePreviewLabel}>Imagen lista para enviar</Text>
         </View>
@@ -284,11 +373,11 @@ export default function ChatScreen() {
       {/* Input */}
       <View style={styles.inputArea}>
         <TouchableOpacity
-          style={[styles.photoBtn, { backgroundColor: myBubbleColor + '20' }]}
+          style={[styles.photoBtn, { backgroundColor: myBubbleColor + "20" }]}
           onPress={handlePickImage}
           activeOpacity={0.7}
         >
-          <Text style={[styles.photoBtnIcon, { color: myBubbleColor }]}>📷</Text>
+          <IconSymbol name="camera.fill" color={myBubbleColor} size={20} />
         </TouchableOpacity>
 
         <View style={styles.inputWrapper}>
@@ -296,7 +385,9 @@ export default function ChatScreen() {
             style={styles.input}
             value={input}
             onChangeText={setInput}
-            placeholder={isVendedor ? 'Responde al cliente...' : '¿Tienes alguna pregunta?'}
+            placeholder={
+              isVendedor ? "Responde al cliente..." : "¿Tienes alguna pregunta?"
+            }
             placeholderTextColor="#BBBBBB"
             multiline
             maxLength={500}
@@ -306,19 +397,26 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={[
             styles.sendBtn,
-            { backgroundColor: (input.trim() || imageUri) && !isSending ? myBubbleColor : '#EBEBEB' },
+            {
+              backgroundColor:
+                (input.trim() || imageUri) && !isSending
+                  ? myBubbleColor
+                  : "#EBEBEB",
+            },
           ]}
           onPress={handleSend}
           disabled={(!input.trim() && !imageUri) || isSending}
           activeOpacity={0.85}
         >
-          {isSending
-            ? <Text style={{ fontSize: 10, color: '#fff' }}>...</Text>
-            : <Text style={[
-                styles.sendIcon,
-                { color: (input.trim() || imageUri) ? '#fff' : '#BBBBBB' },
-              ]}>➤</Text>
-          }
+          {isSending ? (
+            <Text style={{ fontSize: 10, color: "#fff" }}>...</Text>
+          ) : (
+            <IconSymbol
+              name="paperplane.fill"
+              color={input.trim() || imageUri ? "#fff" : "#BBBBBB"}
+              size={18}
+            />
+          )}
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>
@@ -326,59 +424,171 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container:         { flex: 1, backgroundColor: '#F7F7F7' },
+  container: { flex: 1, backgroundColor: "#F7F7F7" },
 
-  roleBanner:        { paddingVertical: 8, paddingHorizontal: 16, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#EBEBEB' },
-  roleBannerText:    { fontSize: 12, fontWeight: '700', letterSpacing: 0.2 },
+  roleBanner: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#EBEBEB",
+  },
+  roleBannerText: { fontSize: 12, fontWeight: "700", letterSpacing: 0.2 },
 
-  listContent:       { padding: 16, gap: 6, paddingBottom: 12 },
+  listContent: { padding: 16, gap: 6, paddingBottom: 12 },
 
-  emptyChat:         { alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
-  emptyChatText:     { fontSize: 14, color: '#717171', textAlign: 'center', maxWidth: 200 },
+  emptyChat: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    gap: 10,
+  },
+  emptyChatText: {
+    fontSize: 14,
+    color: "#717171",
+    textAlign: "center",
+    maxWidth: 200,
+  },
 
-  msgRow:            { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginVertical: 2 },
-  msgRowOwn:         { justifyContent: 'flex-end' },
-  msgColumn:         { maxWidth: '72%', gap: 3 },
+  msgRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    marginVertical: 2,
+  },
+  msgRowOwn: { justifyContent: "flex-end" },
+  msgColumn: { maxWidth: "72%", gap: 3 },
 
-  avatar:            { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center' },
-  avatarText:        { color: '#fff', fontSize: 13, fontWeight: '800' },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarText: { color: "#fff", fontSize: 13, fontWeight: "800" },
 
-  bubble:            { padding: 12, borderRadius: 18, overflow: 'hidden' },
-  bubbleOwn:         { borderBottomRightRadius: 4 },
-  bubbleOther:       { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#EBEBEB', borderBottomLeftRadius: 4 },
-  authorName:        { fontSize: 11, fontWeight: '700', color: '#717171', marginLeft: 2 },
-  msgImage:          { width: 180, height: 180, borderRadius: 10, marginBottom: 6 },
-  msgText:           { fontSize: 15, color: '#1B1C1C', lineHeight: 20 },
-  msgTextOwn:        { color: '#fff' },
-  msgMeta:           { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
-  msgTime:           { fontSize: 10, color: '#BBBBBB' },
-  msgTimeOwn:        { color: 'rgba(255,255,255,0.7)' },
-  msgCheck:          { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
+  bubble: { padding: 12, borderRadius: 18, overflow: "hidden" },
+  bubbleOwn: { borderBottomRightRadius: 4 },
+  bubbleOther: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#EBEBEB",
+    borderBottomLeftRadius: 4,
+  },
+  authorName: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#717171",
+    marginLeft: 2,
+  },
+  msgImage: { width: 180, height: 180, borderRadius: 10, marginBottom: 6 },
+  msgText: { fontSize: 15, color: "#1B1C1C", lineHeight: 20 },
+  msgTextOwn: { color: "#fff" },
+  msgMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    gap: 4,
+    marginTop: 4,
+  },
+  msgTime: { fontSize: 10, color: "#BBBBBB" },
+  msgTimeOwn: { color: "rgba(255,255,255,0.7)" },
+  msgCheck: { fontSize: 10, color: "rgba(255,255,255,0.7)" },
 
-  imagePreviewBox:   { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', paddingHorizontal: 16, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 10 },
-  imagePreview:      { width: 48, height: 48, borderRadius: 8 },
-  imageCancelBtn:    { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FF385C', justifyContent: 'center', alignItems: 'center' },
-  imageCancelText:   { color: '#fff', fontSize: 10, fontWeight: '800' },
-  imagePreviewLabel: { fontSize: 12, color: '#717171', flex: 1 },
+  imagePreviewBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#EBEBEB",
+    gap: 10,
+  },
+  imagePreview: { width: 48, height: 48, borderRadius: 8 },
+  imageCancelBtn: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: "#A86A5A",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  imageCancelText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  imagePreviewLabel: { fontSize: 12, color: "#717171", flex: 1 },
 
-  inputArea:         { flexDirection: 'row', alignItems: 'flex-end', padding: 12, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#EBEBEB', gap: 8 },
-  photoBtn:          { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  photoBtnIcon:      { fontSize: 20 },
-  inputWrapper:      { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 24, backgroundColor: '#F7F7F7', paddingHorizontal: 16, paddingVertical: 10, maxHeight: 100 },
-  input:             { fontSize: 15, color: '#222222' },
-  sendBtn:           { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
-  sendIcon:          { fontSize: 16 },
+  replyPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#EBEBEB",
+    gap: 10,
+  },
+  replyThumbBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  replyThumb: { width: 44, height: 44, borderRadius: 8 },
+  replyAuthor: { fontSize: 12, fontWeight: "700", color: "#111827" },
+  replySnippet: { fontSize: 12, color: "#717171" },
+  replyClose: { padding: 6 },
+
+  inputArea: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    padding: 12,
+    backgroundColor: "#FFFFFF",
+    borderTopWidth: 1,
+    borderTopColor: "#EBEBEB",
+    gap: 8,
+  },
+  photoBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  photoBtnIcon: { fontSize: 20 },
+  inputWrapper: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#EBEBEB",
+    borderRadius: 24,
+    backgroundColor: "#F7F7F7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    maxHeight: 100,
+  },
+  input: { fontSize: 15, color: "#222222" },
+  sendBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  sendIcon: { fontSize: 16 },
 });
+
 
 ================================================
 📄 ARCHIVO: app\(app)\index.tsx
 ================================================
 
-import { useAuthStore } from '@features/auth/presentation/store/authStore';
-import { Room } from '@features/chat/domain/entities/Message';
-import { useRooms } from '@features/chat/presentation/hooks/useRooms';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useAuthStore } from "@features/auth/presentation/store/authStore";
+import { Room } from "@features/chat/domain/entities/Message";
+import { useRooms } from "@features/chat/presentation/hooks/useRooms";
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -388,28 +598,32 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
+import { IconSymbol } from "../../components/ui/icon-symbol";
+import { TEXT_SECONDARY } from "../../src/constants/colors";
 
-const CORAL = '#FF385C';
-const TEAL  = '#00A699';
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function RoomsScreen() {
   const { rooms, isLoading, createRoom, isCreating, createError } = useRooms();
-  const user   = useAuthStore((s) => s.user);
+  const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const [modalVisible, setModalVisible] = useState(false);
-  const [roomName, setRoomName]         = useState('');
+  const [roomName, setRoomName] = useState("");
 
-  const isVendedor = user?.role === 'vendedor';
-  const roleColor  = isVendedor ? CORAL : TEAL;
+  const isVendedor = user?.role === "vendedor";
+  const roleColor = isVendedor ? CORAL : TEAL;
 
   const handleCreate = async () => {
     if (!roomName.trim() || isCreating) return;
     try {
       await createRoom(roomName.trim());
-      setRoomName('');
+      setRoomName("");
       setModalVisible(false);
-    } catch { /* createError se muestra en UI */ }
+    } catch {
+      /* createError se muestra en UI */
+    }
   };
 
   const renderRoom = ({ item }: { item: Room }) => (
@@ -425,7 +639,7 @@ export default function RoomsScreen() {
         <Text style={styles.roomName}>{item.name}</Text>
         <Text style={styles.roomSub}>Toca para entrar</Text>
       </View>
-      <Text style={styles.roomChevron}>›</Text>
+      <IconSymbol name="chevron.right" color="#BBBBBB" size={18} />
     </TouchableOpacity>
   );
 
@@ -441,11 +655,17 @@ export default function RoomsScreen() {
     <View style={styles.container}>
       {/* Banner de rol */}
       <View style={[styles.banner, { backgroundColor: roleColor }]}>
-        <Text style={styles.bannerEmoji}>{isVendedor ? '🏪' : '🛒'}</Text>
+        <IconSymbol
+          name={isVendedor ? "bag.fill" : "cart.fill"}
+          color="#fff"
+          size={26}
+        />
         <View>
           <Text style={styles.bannerName}>Hola, {user?.username}</Text>
           <Text style={styles.bannerRole}>
-            {isVendedor ? 'Gestiona tus ventas en tiempo real.' : 'Descubre productos y chatea con tiendas.'}
+            {isVendedor
+              ? "Gestiona tus ventas en tiempo real."
+              : "Descubre productos y chatea con tiendas."}
           </Text>
         </View>
       </View>
@@ -458,18 +678,24 @@ export default function RoomsScreen() {
         data={rooms}
         keyExtractor={(r) => r.id}
         renderItem={renderRoom}
-        contentContainerStyle={rooms.length === 0 ? styles.emptyContainer : styles.listContent}
+        contentContainerStyle={
+          rooms.length === 0 ? styles.emptyContainer : styles.listContent
+        }
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <View style={styles.emptyIconCircle}>
-              <Text style={{ fontSize: 36 }}>💬</Text>
+              <IconSymbol
+                name="message.fill"
+                color={TEXT_SECONDARY}
+                size={36}
+              />
             </View>
             <Text style={styles.emptyTitle}>No hay salas disponibles</Text>
             <Text style={styles.emptyDesc}>
               {isVendedor
-                ? 'Crea una sala para atender clientes'
-                : 'Espera a que un vendedor cree una sala'}
+                ? "Crea una sala para atender clientes"
+                : "Espera a que un vendedor cree una sala"}
             </Text>
           </View>
         }
@@ -482,7 +708,7 @@ export default function RoomsScreen() {
           onPress={() => setModalVisible(true)}
           activeOpacity={0.85}
         >
-          <Text style={styles.fabText}>+</Text>
+          <IconSymbol name="plus" color="#fff" size={26} />
         </TouchableOpacity>
       )}
 
@@ -494,14 +720,17 @@ export default function RoomsScreen() {
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.overlay}>
-          <TouchableOpacity style={StyleSheet.absoluteFill} onPress={() => setModalVisible(false)} />
+          <TouchableOpacity
+            style={StyleSheet.absoluteFill}
+            onPress={() => setModalVisible(false)}
+          />
           <View style={styles.sheet}>
             {/* Handle */}
             <View style={styles.sheetHandle} />
 
             {/* Ícono */}
             <View style={styles.sheetIconCircle}>
-              <Text style={{ fontSize: 26 }}>🏪</Text>
+              <IconSymbol name="bag.fill" color={CORAL} size={26} />
             </View>
 
             <Text style={styles.sheetTitle}>Nueva sala</Text>
@@ -534,10 +763,11 @@ export default function RoomsScreen() {
               onPress={handleCreate}
               disabled={isCreating}
             >
-              {isCreating
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={styles.sheetBtnCreateText}>Crear sala</Text>
-              }
+              {isCreating ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.sheetBtnCreateText}>Crear sala</Text>
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -553,95 +783,235 @@ export default function RoomsScreen() {
   );
 }
 
-
 const styles = StyleSheet.create({
-  container:        { flex: 1, backgroundColor: '#FCFAF8' },
-  centered:         { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: "#FCFAF8" },
+  centered: { flex: 1, justifyContent: "center", alignItems: "center" },
 
   // Banner
-  banner:           { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 20, paddingTop: 24 },
-  bannerEmoji:      { fontSize: 36 },
-  bannerName:       { color: '#fff', fontSize: 16, fontWeight: '700' },
-  bannerRole:       { color: 'rgba(255,255,255,0.82)', fontSize: 13, marginTop: 2 },
+  banner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 20,
+    paddingTop: 24,
+  },
+  bannerEmoji: { fontSize: 36 },
+  bannerName: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  bannerRole: { color: "rgba(255,255,255,0.82)", fontSize: 13, marginTop: 2 },
 
   // Sección
-  sectionLabel:     { fontSize: 11, fontWeight: '700', color: '#717171', letterSpacing: 1.2, textTransform: 'uppercase', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10 },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#717171",
+    letterSpacing: 1.2,
+    textTransform: "uppercase",
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
 
   // Lista
-  listContent:      { paddingHorizontal: 16, paddingBottom: 100 },
-  separator:        { height: 1, backgroundColor: '#F0EDED', marginHorizontal: 16 },
-  roomItem:         { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  roomIconBox:      { width: 44, height: 44, backgroundColor: '#F0EDED', borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  roomIconText:     { fontSize: 18, fontWeight: '800', color: '#5B5C5C' },
-  roomInfo:         { flex: 1 },
-  roomName:         { fontSize: 15, fontWeight: '700', color: '#1B1C1C' },
-  roomSub:          { fontSize: 12, color: '#717171', marginTop: 2 },
-  roomChevron:      { fontSize: 22, color: '#BBBBBB' },
+  listContent: { paddingHorizontal: 16, paddingBottom: 100 },
+  separator: { height: 1, backgroundColor: "#F0EDED", marginHorizontal: 16 },
+  roomItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+  },
+  roomIconBox: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#F0EDED",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  roomIconText: { fontSize: 18, fontWeight: "800", color: "#5B5C5C" },
+  roomInfo: { flex: 1 },
+  roomName: { fontSize: 15, fontWeight: "700", color: "#1B1C1C" },
+  roomSub: { fontSize: 12, color: "#717171", marginTop: 2 },
+  roomChevron: { fontSize: 22, color: "#BBBBBB" },
 
   // Empty
-  emptyContainer:   { flex: 1 },
-  emptyBox:         { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 10 },
-  emptyIconCircle:  { width: 80, height: 80, borderRadius: 40, backgroundColor: '#F7F7F7', justifyContent: 'center', alignItems: 'center', marginBottom: 4 },
-  emptyTitle:       { fontSize: 18, fontWeight: '800', color: '#1B1C1C' },
-  emptyDesc:        { fontSize: 14, color: '#717171', textAlign: 'center', maxWidth: 220 },
+  emptyContainer: { flex: 1 },
+  emptyBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingTop: 80,
+    gap: 10,
+  },
+  emptyIconCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "#F7F7F7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  emptyTitle: { fontSize: 18, fontWeight: "800", color: "#1B1C1C" },
+  emptyDesc: {
+    fontSize: 14,
+    color: "#717171",
+    textAlign: "center",
+    maxWidth: 220,
+  },
 
   // FAB
-  fab:              { position: 'absolute', right: 20, bottom: 32, width: 56, height: 56, borderRadius: 28, backgroundColor: CORAL, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8 },
-  fabText:          { color: '#fff', fontSize: 30, lineHeight: 34 },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: CORAL,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabText: { color: "#fff", fontSize: 30, lineHeight: 34 },
 
   // Modal / Bottom Sheet
-  overlay:          { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  sheet:            { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  sheetHandle:      { width: 40, height: 4, backgroundColor: '#EBEBEB', borderRadius: 2, alignSelf: 'center', marginBottom: 20 },
-  sheetIconCircle:  { width: 56, height: 56, borderRadius: 28, backgroundColor: '#FFF0F2', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-  sheetTitle:       { fontSize: 22, fontWeight: '800', color: '#222222', marginBottom: 4 },
-  sheetSubtitle:    { fontSize: 13, color: '#717171', marginBottom: 16 },
-  sheetDivider:     { height: 1, backgroundColor: '#EBEBEB', marginBottom: 16 },
-  sheetError:       { color: CORAL, fontSize: 13, marginBottom: 10 },
-  sheetFieldLabel:  { fontSize: 11, fontWeight: '700', color: '#717171', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 },
-  sheetInputWrapper:{ borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 10, padding: 14, marginBottom: 6 },
-  sheetInput:       { fontSize: 15, color: '#222222' },
-  sheetCounter:     { fontSize: 11, color: '#BBBBBB', textAlign: 'right', marginTop: 6 },
-  sheetBtnCreate:   { backgroundColor: CORAL, borderRadius: 8, height: 52, justifyContent: 'center', alignItems: 'center', marginTop: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 3 },
-  sheetBtnCreateText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  sheetBtnCancel:   { height: 44, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  sheetBtnCancelText: { color: '#717171', fontSize: 15 },
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  sheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 40,
+  },
+  sheetHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: "#EBEBEB",
+    borderRadius: 2,
+    alignSelf: "center",
+    marginBottom: 20,
+  },
+  sheetIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#FFF0F2",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sheetTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#222222",
+    marginBottom: 4,
+  },
+  sheetSubtitle: { fontSize: 13, color: "#717171", marginBottom: 16 },
+  sheetDivider: { height: 1, backgroundColor: "#EBEBEB", marginBottom: 16 },
+  sheetError: { color: CORAL, fontSize: 13, marginBottom: 10 },
+  sheetFieldLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#717171",
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    marginBottom: 8,
+  },
+  sheetInputWrapper: {
+    borderWidth: 1.5,
+    borderColor: "#EBEBEB",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 6,
+  },
+  sheetInput: { fontSize: 15, color: "#222222" },
+  sheetCounter: {
+    fontSize: 11,
+    color: "#BBBBBB",
+    textAlign: "right",
+    marginTop: 6,
+  },
+  sheetBtnCreate: {
+    backgroundColor: CORAL,
+    borderRadius: 8,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sheetBtnCreateText: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  sheetBtnCancel: {
+    height: 44,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  sheetBtnCancelText: { color: "#717171", fontSize: 15 },
 });
+
 
 ================================================
 📄 ARCHIVO: app\(app)\_layout.tsx
 ================================================
 
-import { useAuth } from '@features/auth/presentation/hooks/useAuth';
-import { useAuthStore } from '@features/auth/presentation/store/authStore';
-import { Stack } from 'expo-router';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from "@features/auth/presentation/hooks/useAuth";
+import { useAuthStore } from "@features/auth/presentation/store/authStore";
+import { Stack } from "expo-router";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { IconSymbol } from "../../components/ui/icon-symbol";
 
-const CORAL = '#FF385C';
-const TEAL  = '#00A699';
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function AppLayout() {
-  const { logout }     = useAuth();
-  const user           = useAuthStore((s) => s.user);
-  const isVendedor     = user?.role === 'vendedor';
-  const headerBgColor  = isVendedor ? CORAL : TEAL;
+  const { logout } = useAuth();
+  const user = useAuthStore((s) => s.user);
+  const isVendedor = user?.role === "vendedor";
+  const headerBgColor = isVendedor ? CORAL : TEAL;
 
   return (
-    <Stack screenOptions={{
-      headerStyle:      { backgroundColor: headerBgColor },
-      headerTintColor:  '#fff',
-      headerTitleStyle: { fontWeight: '800', fontSize: 18 },
-    }}>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: headerBgColor },
+        headerTintColor: "#fff",
+        headerTitleStyle: { fontWeight: "800", fontSize: 18 },
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
-          title: 'ShopChat',
+          title: "ShopChat",
           headerRight: () => (
             <View style={styles.headerRight}>
               <View style={styles.rolePill}>
-                <Text style={styles.rolePillText}>
-                  {isVendedor ? '🏪 Vendedor' : '🛒 Cliente'}
-                </Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                >
+                  <IconSymbol
+                    name={isVendedor ? "bag.fill" : "cart.fill"}
+                    color="#fff"
+                    size={12}
+                  />
+                  <Text style={styles.rolePillText}>
+                    {isVendedor ? "Vendedor" : "Cliente"}
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity onPress={logout} activeOpacity={0.7}>
                 <Text style={styles.logoutText}>Salir</Text>
@@ -650,29 +1020,37 @@ export default function AppLayout() {
           ),
         }}
       />
-      <Stack.Screen
-        name="chat/[roomId]"
-        options={{ title: 'Chat' }}
-      />
+      <Stack.Screen name="chat/[roomId]" options={{ title: "Chat" }} />
     </Stack>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRight:   { flexDirection: 'row', alignItems: 'center', gap: 10, marginRight: 4 },
-  rolePill:      { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4 },
-  rolePillText:  { color: '#fff', fontSize: 12, fontWeight: '700' },
-  logoutText:    { color: '#fff', fontSize: 13, fontWeight: '600' },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginRight: 4,
+  },
+  rolePill: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  rolePillText: { color: "#fff", fontSize: 12, fontWeight: "700" },
+  logoutText: { color: "#fff", fontSize: 13, fontWeight: "600" },
 });
+
 
 ================================================
 📄 ARCHIVO: app\(auth)\login.tsx
 ================================================
 
-import { useAuth } from '@features/auth/presentation/hooks/useAuth';
-import { Link } from 'expo-router';
-import { useState } from 'react';
-import LottieView from 'lottie-react-native';
+import { useAuth } from "@features/auth/presentation/hooks/useAuth";
+import { Link } from "expo-router";
+import LottieView from "lottie-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -683,17 +1061,60 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
+import { IconSymbol } from "../../components/ui/icon-symbol";
+import { useGoogleLogin } from "../../src/features/auth/presentation/hooks/useGoogleLogin";
 
 export default function LoginScreen() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const { login, isLoading, error } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [resetFeedback, setResetFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const {
+    login,
+    resetPassword,
+    isLoading,
+    isResettingPassword,
+    error,
+    resetPasswordError,
+  } = useAuth();
+  const {
+    loginWithGoogle,
+    loading: isGoogleLoading,
+    error: googleError,
+  } = useGoogleLogin();
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setResetFeedback({
+        type: "error",
+        message: "Ingresa tu correo para recuperar la contraseña.",
+      });
+      return;
+    }
+
+    try {
+      await resetPassword({ email: email.trim() });
+      setResetFeedback({
+        type: "success",
+        message:
+          "Revisa tu correo. Te enviamos las instrucciones para recuperar tu contraseña.",
+      });
+    } catch {
+      setResetFeedback({
+        type: "error",
+        message:
+          resetPasswordError ?? "No se pudo enviar el correo de recuperación.",
+      });
+    }
+  };
 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {/* Decoración de fondo */}
       <View style={styles.blobTopRight} />
@@ -707,7 +1128,7 @@ export default function LoginScreen() {
         {/* Header */}
         <View style={styles.header}>
           <LottieView
-            source={require('../../assets/animations/shopchat.json')}
+            source={require("../../assets/animations/shopchat.json")}
             autoPlay
             loop
             style={styles.lottie}
@@ -719,14 +1140,23 @@ export default function LoginScreen() {
         {/* Error */}
         {error && (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <IconSymbol
+                name="exclamationmark.triangle.fill"
+                color={CORAL}
+                size={16}
+              />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
           </View>
         )}
 
         {/* Formulario */}
         <View style={styles.form}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>✉️</Text>
+            <IconSymbol name="envelope.fill" color="#9A9A9A" size={18} />
             <TextInput
               style={styles.input}
               placeholder="Correo electrónico"
@@ -739,7 +1169,7 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>🔒</Text>
+            <IconSymbol name="lock.fill" color="#9A9A9A" size={18} />
             <TextInput
               style={styles.input}
               placeholder="Contraseña"
@@ -749,7 +1179,41 @@ export default function LoginScreen() {
               secureTextEntry
             />
           </View>
+
+          <TouchableOpacity
+            style={styles.forgotPasswordBtn}
+            onPress={handleForgotPassword}
+            disabled={isResettingPassword}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.forgotPasswordText}>
+              {isResettingPassword
+                ? "Enviando correo..."
+                : "¿Olvidaste tu contraseña?"}
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {resetFeedback && (
+          <View
+            style={[
+              styles.feedbackBox,
+              resetFeedback.type === "success"
+                ? styles.feedbackSuccess
+                : styles.feedbackError,
+            ]}
+          >
+            <Text
+              style={
+                resetFeedback.type === "success"
+                  ? styles.feedbackSuccessText
+                  : styles.feedbackErrorText
+              }
+            >
+              {resetFeedback.message}
+            </Text>
+          </View>
+        )}
 
         {/* Botón principal */}
         <TouchableOpacity
@@ -758,10 +1222,11 @@ export default function LoginScreen() {
           disabled={isLoading}
           activeOpacity={0.85}
         >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnPrimaryText}>Ingresar</Text>
-          }
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnPrimaryText}>Ingresar</Text>
+          )}
         </TouchableOpacity>
 
         {/* Divisor */}
@@ -772,16 +1237,31 @@ export default function LoginScreen() {
         </View>
 
         {/* Botón Google (visual) */}
-        <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
-          <Text style={styles.btnGoogleIcon}>G</Text>
-          <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+        <TouchableOpacity
+          style={[styles.btnGoogle, isGoogleLoading && styles.btnDisabled]}
+          activeOpacity={0.85}
+          onPress={loginWithGoogle}
+          disabled={isGoogleLoading}
+        >
+          {isGoogleLoading ? (
+            <ActivityIndicator color="#222222" />
+          ) : (
+            <>
+              <Text style={styles.btnGoogleIcon}>G</Text>
+              <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+            </>
+          )}
         </TouchableOpacity>
+
+        {googleError && (
+          <Text style={styles.googleErrorText}>{googleError}</Text>
+        )}
 
         {/* Link registro */}
         <Link href="/(auth)/register" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              ¿No tienes cuenta?{' '}
+              ¿No tienes cuenta?{" "}
               <Text style={styles.linkAccent}>Regístrate</Text>
             </Text>
           </TouchableOpacity>
@@ -791,54 +1271,169 @@ export default function LoginScreen() {
   );
 }
 
-const CORAL = '#FF385C';
+const CORAL = "#A86A5A";
 
 const styles = StyleSheet.create({
-  flex:           { flex: 1, backgroundColor: '#FFFFFF' },
+  flex: { flex: 1, backgroundColor: "#FFFFFF" },
 
-  blobTopRight:   { position: 'absolute', top: -80, right: -60, width: 300, height: 300, borderRadius: 150, backgroundColor: '#a52a3adb', opacity: 0.5 },
-  blobBottomLeft: { position: 'absolute', bottom: -60, left: -40, width: 240, height: 240, borderRadius: 120, backgroundColor: '#a52a3adb', opacity: 0.6 },
+  blobTopRight: {
+    position: "absolute",
+    top: -80,
+    right: -60,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: "rgba(167, 68, 34, 0.38)",
+    opacity: 0.5,
+  },
+  blobBottomLeft: {
+    position: "absolute",
+    bottom: -60,
+    left: -40,
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: "rgba(167, 68, 34, 0.38)",
+    opacity: 0.6,
+  },
 
-  container:      { flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40, justifyContent: 'center' },
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 40,
+    justifyContent: "center",
+  },
 
-  header:         { alignItems: 'center', marginBottom: 32 },
-  lottie:         { width: 160, height: 160, marginBottom: 4 },
-  title:          { fontSize: 32, fontWeight: '800', color: '#222222', letterSpacing: -0.5, marginBottom: 4 },
-  subtitle:       { fontSize: 16, fontWeight: '500', color: '#717171' },
+  header: { alignItems: "center", marginBottom: 32 },
+  lottie: { width: 160, height: 160, marginBottom: 4 },
+  title: {
+    fontSize: 32,
+    fontWeight: "800",
+    color: "#222222",
+    letterSpacing: -0.5,
+    marginBottom: 4,
+  },
+  subtitle: { fontSize: 16, fontWeight: "500", color: "#b54949" },
 
-  errorBox:       { backgroundColor: '#FFF0F2', borderRadius: 8, padding: 12, marginBottom: 16, borderLeftWidth: 3, borderLeftColor: CORAL },
-  errorText:      { color: CORAL, fontSize: 13, fontWeight: '500' },
+  errorBox: {
+    backgroundColor: "#FFF0F2",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: CORAL,
+  },
+  errorText: { color: CORAL, fontSize: 13, fontWeight: "500" },
 
-  form:           { marginBottom: 20, gap: 4 },
-  inputWrapper:   { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderBottomColor: '#DDDDDD', paddingVertical: 14, gap: 12 },
-  inputIcon:      { fontSize: 18, width: 24, textAlign: 'center' },
-  input:          { flex: 1, fontSize: 16, color: '#222222', paddingVertical: 0 },
+  form: { marginBottom: 20, gap: 4 },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#DDDDDD",
+    paddingVertical: 14,
+    gap: 12,
+  },
+  inputIcon: { fontSize: 18, width: 24, textAlign: "center" },
+  input: { flex: 1, fontSize: 16, color: "#222222", paddingVertical: 0 },
+  forgotPasswordBtn: { marginTop: 12, alignSelf: "flex-end" },
+  forgotPasswordText: {
+    color: CORAL,
+    fontSize: 13,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
 
-  btnPrimary:     { backgroundColor: CORAL, borderRadius: 8, height: 54, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.18, shadowRadius: 4, elevation: 4, marginTop: 8 },
-  btnDisabled:    { opacity: 0.7 },
-  btnPrimaryText: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  feedbackBox: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 4,
+  },
+  feedbackSuccess: {
+    backgroundColor: "#EDF9F2",
+    borderLeftWidth: 3,
+    borderLeftColor: "#2E7D4D",
+  },
+  feedbackError: {
+    backgroundColor: "#FFF0F2",
+    borderLeftWidth: 3,
+    borderLeftColor: CORAL,
+  },
+  feedbackSuccessText: { color: "#2E7D4D", fontSize: 13, fontWeight: "500" },
+  feedbackErrorText: { color: CORAL, fontSize: 13, fontWeight: "500" },
 
-  divider:        { flexDirection: 'row', alignItems: 'center', marginVertical: 24, gap: 12 },
-  dividerLine:    { flex: 1, height: 1, backgroundColor: '#EBEBEB' },
-  dividerText:    { fontSize: 12, color: '#717171', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  btnPrimary: {
+    backgroundColor: CORAL,
+    borderRadius: 8,
+    height: 54,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 4,
+    marginTop: 8,
+  },
+  btnDisabled: { opacity: 0.7 },
+  btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
-  btnGoogle:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 54, borderWidth: 1.5, borderColor: '#222222', borderRadius: 8, gap: 10, backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
-  btnGoogleIcon:  { fontSize: 18, fontWeight: '900', color: '#f44242' },
-  btnGoogleText:  { fontSize: 16, fontWeight: '600', color: '#222222' },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginVertical: 24,
+    gap: 12,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: "#EBEBEB" },
+  dividerText: {
+    fontSize: 12,
+    color: "#717171",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
 
-  linkBtn:        { marginTop: 28, alignItems: 'center' },
-  linkText:       { fontSize: 14, color: '#222222' },
-  linkAccent:     { fontWeight: '700', textDecorationLine: 'underline' },
+  btnGoogle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    height: 54,
+    borderWidth: 1.5,
+    borderColor: "#222222",
+    borderRadius: 8,
+    gap: 10,
+    backgroundColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  btnGoogleIcon: { fontSize: 18, fontWeight: "900", color: "#f44242" },
+  btnGoogleText: { fontSize: 16, fontWeight: "600", color: "#222222" },
+  googleErrorText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: CORAL,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+
+  linkBtn: { marginTop: 28, alignItems: "center" },
+  linkText: { fontSize: 14, color: "#222222" },
+  linkAccent: { fontWeight: "700", textDecorationLine: "underline" },
 });
+
 
 ================================================
 📄 ARCHIVO: app\(auth)\register.tsx
 ================================================
 
-import { useAuth } from '@features/auth/presentation/hooks/useAuth';
-import { Link } from 'expo-router';
-import { useState } from 'react';
-import LottieView from 'lottie-react-native';
+import { useAuth } from "@features/auth/presentation/hooks/useAuth";
+import { Link } from "expo-router";
+import LottieView from "lottie-react-native";
+import { useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -849,26 +1444,27 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
+import { IconSymbol } from "../../components/ui/icon-symbol";
 
-type Role = 'cliente' | 'vendedor';
+type Role = "cliente" | "vendedor";
 
 export default function RegisterScreen() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [role, setRole]         = useState<Role>('cliente');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState<Role>("cliente");
   const { register, isLoading, error } = useAuth();
 
   const handleRegister = () => {
-    console.log('ROLE ENVIADO:', role);
+    console.log("ROLE ENVIADO:", role);
     register({ email, password, username, role });
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.container}
@@ -878,7 +1474,7 @@ export default function RegisterScreen() {
         {/* Header */}
         <View style={styles.header}>
           <LottieView
-            source={require('../../assets/animations/shopchat.json')}
+            source={require("../../assets/animations/shopchat.json")}
             autoPlay
             loop
             style={styles.lottie}
@@ -889,27 +1485,42 @@ export default function RegisterScreen() {
         {/* Error */}
         {error && (
           <View style={styles.errorBox}>
-            <Text style={styles.errorText}>⚠️ {error}</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              <IconSymbol
+                name="exclamationmark.triangle.fill"
+                color={CORAL}
+                size={16}
+              />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
           </View>
         )}
 
         {/* Roles */}
-        <Text style={styles.roleLabel}>
-          ¿Cómo quieres usar ShopChat?
-        </Text>
+        <Text style={styles.roleLabel}>¿Cómo quieres usar ShopChat?</Text>
 
         <View style={styles.roleRow}>
           {/* CLIENTE */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[styles.roleCard, role === 'cliente' && styles.roleCardActiveTeal]}
-            onPress={() => setRole('cliente')}
+            style={[
+              styles.roleCard,
+              role === "cliente" && styles.roleCardActiveTeal,
+            ]}
+            onPress={() => setRole("cliente")}
           >
-            {role === 'cliente' && (
-              <Text style={[styles.roleCheck, { color: '#00A699' }]}>✓</Text>
+            {role === "cliente" && (
+              <IconSymbol name="checkmark" color="#7D9BAB" size={14} />
             )}
-            <Text style={styles.roleEmoji}>🛒</Text>
-            <Text style={[styles.roleCardTitle, role === 'cliente' && { color: '#00A699' }]}>
+            <IconSymbol name="cart.fill" color="#7D9BAB" size={28} />
+            <Text
+              style={[
+                styles.roleCardTitle,
+                role === "cliente" && { color: "#7D9BAB" },
+              ]}
+            >
               CLIENTE
             </Text>
             <Text style={styles.roleCardDesc}>Consulta y compra</Text>
@@ -918,14 +1529,22 @@ export default function RegisterScreen() {
           {/* VENDEDOR */}
           <TouchableOpacity
             activeOpacity={0.8}
-            style={[styles.roleCard, role === 'vendedor' && styles.roleCardActiveCoral]}
-            onPress={() => setRole('vendedor')}
+            style={[
+              styles.roleCard,
+              role === "vendedor" && styles.roleCardActiveCoral,
+            ]}
+            onPress={() => setRole("vendedor")}
           >
-            {role === 'vendedor' && (
-              <Text style={[styles.roleCheck, { color: '#FF385C' }]}>✓</Text>
+            {role === "vendedor" && (
+              <IconSymbol name="checkmark" color="#A86A5A" size={14} />
             )}
-            <Text style={styles.roleEmoji}>🏪</Text>
-            <Text style={[styles.roleCardTitle, role === 'vendedor' && { color: '#FF385C' }]}>
+            <IconSymbol name="bag.fill" color="#A86A5A" size={28} />
+            <Text
+              style={[
+                styles.roleCardTitle,
+                role === "vendedor" && { color: "#A86A5A" },
+              ]}
+            >
               VENDEDOR
             </Text>
             <Text style={styles.roleCardDesc}>Vende y atiende</Text>
@@ -935,7 +1554,7 @@ export default function RegisterScreen() {
         {/* Formulario */}
         <View style={styles.form}>
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>👤</Text>
+            <IconSymbol name="person.fill" color="#9A9A9A" size={18} />
             <TextInput
               style={styles.input}
               placeholder="Nombre de usuario"
@@ -947,7 +1566,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>✉️</Text>
+            <IconSymbol name="envelope.fill" color="#9A9A9A" size={18} />
             <TextInput
               style={styles.input}
               placeholder="Correo electrónico"
@@ -960,7 +1579,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.inputWrapper}>
-            <Text style={styles.inputIcon}>🔒</Text>
+            <IconSymbol name="lock.fill" color="#9A9A9A" size={18} />
             <TextInput
               style={styles.input}
               placeholder="Contraseña"
@@ -979,17 +1598,18 @@ export default function RegisterScreen() {
           activeOpacity={0.85}
           onPress={handleRegister}
         >
-          {isLoading
-            ? <ActivityIndicator color="#fff" />
-            : <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
-          }
+          {isLoading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.btnPrimaryText}>Crear cuenta</Text>
+          )}
         </TouchableOpacity>
 
         {/* Link login */}
         <Link href="/(auth)/login" asChild>
           <TouchableOpacity style={styles.linkBtn}>
             <Text style={styles.linkText}>
-              ¿Ya tienes cuenta?{' '}
+              ¿Ya tienes cuenta?{" "}
               <Text style={styles.linkAccent}>Inicia sesión</Text>
             </Text>
           </TouchableOpacity>
@@ -999,43 +1619,94 @@ export default function RegisterScreen() {
   );
 }
 
-const CORAL = '#FF385C';
+const CORAL = "#A86A5A";
 
 const styles = StyleSheet.create({
-  flex:                { flex: 1, backgroundColor: '#FCFAF8' },
+  flex: { flex: 1, backgroundColor: "#FCFAF8" },
 
-  container:           { flexGrow: 1, paddingHorizontal: 24, paddingTop: 40, paddingBottom: 40 },
+  container: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    paddingBottom: 40,
+  },
 
-  header:              { alignItems: 'center', marginBottom: 20 },
-  lottie:              { width: 130, height: 130, marginBottom: 4 },
-  title:               { fontSize: 28, fontWeight: '800', color: '#222222' },
+  header: { alignItems: "center", marginBottom: 20 },
+  lottie: { width: 130, height: 130, marginBottom: 4 },
+  title: { fontSize: 28, fontWeight: "800", color: "#222222" },
 
-  errorBox:            { backgroundColor: '#FFF0F2', borderRadius: 8, padding: 12, marginBottom: 16 },
-  errorText:           { color: CORAL, fontSize: 13 },
+  errorBox: {
+    backgroundColor: "#FFF0F2",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  errorText: { color: CORAL, fontSize: 13 },
 
-  roleLabel:           { fontSize: 14, color: '#717171', fontWeight: '600', marginBottom: 12 },
-  roleRow:             { flexDirection: 'row', gap: 12, marginBottom: 24 },
-  roleCard:            { flex: 1, borderWidth: 1.5, borderColor: '#EBEBEB', borderRadius: 12, padding: 16, alignItems: 'center', backgroundColor: '#FFFFFF', position: 'relative' },
-  roleCardActiveTeal:  { borderColor: '#00A699', backgroundColor: 'rgba(0,166,153,0.04)' },
-  roleCardActiveCoral: { borderColor: CORAL, backgroundColor: 'rgba(255,56,92,0.04)' },
-  roleCheck:           { position: 'absolute', top: 8, right: 10, fontSize: 13, fontWeight: '800' },
-  roleEmoji:           { fontSize: 30, marginBottom: 6 },
-  roleCardTitle:       { fontSize: 12, fontWeight: '700', color: '#222222' },
-  roleCardDesc:        { fontSize: 11, color: '#717171', marginTop: 3 },
+  roleLabel: {
+    fontSize: 14,
+    color: "#717171",
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+  roleRow: { flexDirection: "row", gap: 12, marginBottom: 24 },
+  roleCard: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#EBEBEB",
+    borderRadius: 12,
+    padding: 16,
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    position: "relative",
+  },
+  roleCardActiveTeal: {
+    borderColor: "#7D9BAB",
+    backgroundColor: "rgba(125,155,171,0.06)",
+  },
+  roleCardActiveCoral: {
+    borderColor: CORAL,
+    backgroundColor: "rgba(168,106,90,0.06)",
+  },
+  roleCheck: {
+    position: "absolute",
+    top: 8,
+    right: 10,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  roleEmoji: { fontSize: 30, marginBottom: 6 },
+  roleCardTitle: { fontSize: 12, fontWeight: "700", color: "#222222" },
+  roleCardDesc: { fontSize: 11, color: "#717171", marginTop: 3 },
 
-  form:                { marginBottom: 20, gap: 4 },
-  inputWrapper:        { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.5, borderBottomColor: '#DDDDDD', paddingVertical: 14, gap: 12 },
-  inputIcon:           { fontSize: 18, width: 24, textAlign: 'center' },
-  input:               { flex: 1, fontSize: 16, color: '#222222' },
+  form: { marginBottom: 20, gap: 4 },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderBottomWidth: 1.5,
+    borderBottomColor: "#DDDDDD",
+    paddingVertical: 14,
+    gap: 12,
+  },
+  inputIcon: { fontSize: 18, width: 24, textAlign: "center" },
+  input: { flex: 1, fontSize: 16, color: "#222222" },
 
-  btnPrimary:          { backgroundColor: CORAL, borderRadius: 100, height: 54, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
-  btnDisabled:         { opacity: 0.7 },
-  btnPrimaryText:      { color: '#fff', fontSize: 16, fontWeight: '700' },
+  btnPrimary: {
+    backgroundColor: CORAL,
+    borderRadius: 100,
+    height: 54,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  btnDisabled: { opacity: 0.7 },
+  btnPrimaryText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 
-  linkBtn:             { marginTop: 24, alignItems: 'center' },
-  linkText:            { fontSize: 14, color: '#717171' },
-  linkAccent:          { color: CORAL, fontWeight: '700' },
+  linkBtn: { marginTop: 24, alignItems: "center" },
+  linkText: { fontSize: 14, color: "#717171" },
+  linkAccent: { color: CORAL, fontWeight: "700" },
 });
+
 
 ================================================
 📄 ARCHIVO: app\(auth)\_layout.tsx
@@ -1120,7 +1791,6 @@ export default function RootLayout() {
     "icon": "./assets/images/icon.png",
     "scheme": "michatapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true
     },
@@ -1131,7 +1801,7 @@ export default function RootLayout() {
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "edgeToEdgeEnabled": true,
+
       "predictiveBackGestureEnabled": false
     },
     "web": {
@@ -1164,7 +1834,6 @@ export default function RootLayout() {
     }
   }
 }
-
 
 
 ================================================
@@ -1520,12 +2189,15 @@ export function IconSymbol({
 
 // Fallback for using MaterialIcons on Android and web.
 
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
-import { ComponentProps } from 'react';
-import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import { SymbolViewProps, SymbolWeight } from "expo-symbols";
+import { ComponentProps } from "react";
+import { OpaqueColorValue, type StyleProp, type TextStyle } from "react-native";
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
+type IconMapping = Record<
+  SymbolViewProps["name"],
+  ComponentProps<typeof MaterialIcons>["name"]
+>;
 type IconSymbolName = keyof typeof MAPPING;
 
 /**
@@ -1534,10 +2206,23 @@ type IconSymbolName = keyof typeof MAPPING;
  * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
  */
 const MAPPING = {
-  'house.fill': 'home',
-  'paperplane.fill': 'send',
-  'chevron.left.forwardslash.chevron.right': 'code',
-  'chevron.right': 'chevron-right',
+  "house.fill": "home",
+  "paperplane.fill": "send",
+  "chevron.left.forwardslash.chevron.right": "code",
+  "chevron.right": "chevron-right",
+  "cart.fill": "shopping-cart",
+  "bag.fill": "storefront",
+  "message.fill": "chat",
+  "photo.fill": "photo-camera",
+  "camera.fill": "photo-camera",
+  "person.fill": "person",
+  "envelope.fill": "email",
+  "lock.fill": "lock",
+  xmark: "close",
+  plus: "add",
+  checkmark: "check",
+  "checkmark.circle": "check-circle",
+  "exclamationmark.triangle.fill": "warning",
 } as IconMapping;
 
 /**
@@ -1557,7 +2242,14 @@ export function IconSymbol({
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  return (
+    <MaterialIcons
+      color={color}
+      size={size}
+      name={MAPPING[name]}
+      style={style}
+    />
+  );
 }
 
 
@@ -1752,6 +2444,7 @@ export function useThemeColor(
     "react-native-reanimated": "~4.1.1",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+    "react-native-url-polyfill": "^3.0.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
     "zustand": "^5.0.13"
@@ -1941,6 +2634,25 @@ rl.question(
 
 
 ================================================
+📄 ARCHIVO: src\constants\colors.ts
+================================================
+
+// Semantic color tokens for the app
+export const PRIMARY_VENDOR = "#A86A5A"; // Primary accent (vendedor)
+export const SECONDARY_GRADIENT = "#E5C3B4"; // Secondary gradient accent
+export const BACKGROUND = "#FFFDFB"; // Neutral background
+export const SURFACE = "#FFFFFF"; // Cards and surfaces
+export const TEXT_MAIN = "#111827"; // Main text
+export const TEXT_SECONDARY = "#6B7280"; // Secondary text
+export const BORDER = "#E6E6E6"; // Borders
+export const CLIENT_TINT = "rgba(125,155,171,0.18)"; // cliente tint (soft)
+export const PRIMARY_GRADIENT_START = PRIMARY_VENDOR;
+export const PRIMARY_GRADIENT_END = SECONDARY_GRADIENT;
+export const PRIMARY_BUTTON_ALPHA_BG = "rgba(168,106,90,0.08)";
+export const RADIUS = 10; // default corner radius
+
+
+================================================
 📄 ARCHIVO: src\features\auth\application\use-cases\LoginUseCase.ts
 ================================================
 
@@ -1992,6 +2704,42 @@ export class RegisterUseCase {
 }
 
 ================================================
+📄 ARCHIVO: src\features\auth\application\use-cases\ResetPasswordUseCase.ts
+================================================
+
+import { AuthError } from "../../../../shared/domain/errors/AppError";
+import { IAuthRepository } from "../../domain/repositories/IAuthRepository";
+
+export class ResetPasswordUseCase {
+  constructor(private readonly authRepo: IAuthRepository) {}
+
+  async execute(email: string, redirectTo: string): Promise<void> {
+    if (!email) {
+      throw new AuthError("El email es requerido");
+    }
+
+    if (!email.includes("@")) {
+      throw new AuthError("Ingresa un email valido");
+    }
+
+    if (!redirectTo) {
+      throw new AuthError("La URL de redireccion es requerida");
+    }
+
+    try {
+      await this.authRepo.resetPassword(email, redirectTo);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo enviar el correo de recuperacion";
+      throw new AuthError(message, error);
+    }
+  }
+}
+
+
+================================================
 📄 ARCHIVO: src\features\auth\domain\entities\User.ts
 ================================================
 
@@ -2009,25 +2757,31 @@ export interface User {
 📄 ARCHIVO: src\features\auth\domain\repositories\IAuthRepository.ts
 ================================================
 
-import { User } from '../entities/User';
+import { User } from "../entities/User";
 
 export interface IAuthRepository {
   login(email: string, password: string): Promise<User>;
-  register(email: string, password: string, username: string, role: 'vendedor' | 'cliente'): Promise<User>;
+  register(
+    email: string,
+    password: string,
+    username: string,
+    role: "vendedor" | "cliente",
+  ): Promise<User>;
+  resetPassword(email: string, redirectTo: string): Promise<void>;
   logout(): Promise<void>;
   getCurrentUser(): Promise<User | null>;
 }
+
 
 ================================================
 📄 ARCHIVO: src\features\auth\infrastructure\repositories\SupabaseAuthRepository.ts
 ================================================
 
-import { supabase } from '../../../../shared/infrastructure/supabase/client';
-import { User } from '../../domain/entities/User';
-import { IAuthRepository } from '../../domain/repositories/IAuthRepository';
+import { supabase } from "../../../../shared/infrastructure/supabase/client";
+import { User } from "../../domain/entities/User";
+import { IAuthRepository } from "../../domain/repositories/IAuthRepository";
 
 export class SupabaseAuthRepository implements IAuthRepository {
-
   async login(email: string, password: string): Promise<User> {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -2035,24 +2789,24 @@ export class SupabaseAuthRepository implements IAuthRepository {
     });
 
     if (error || !data.user) {
-      throw error ?? new Error('Error al iniciar sesión');
+      throw error ?? new Error("Error al iniciar sesión");
     }
 
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, avatar_url, role')
-      .eq('id', data.user.id)
+      .from("profiles")
+      .select("username, avatar_url, role")
+      .eq("id", data.user.id)
       .single();
 
     if (profileError || !profile) {
-      throw new Error('No se pudo obtener el perfil del usuario');
+      throw new Error("No se pudo obtener el perfil del usuario");
     }
 
     return {
-      id:        data.user.id,
-      email:     data.user.email!,
-      username:  profile.username,
-      role:      profile.role as 'cliente' | 'vendedor',
+      id: data.user.id,
+      email: data.user.email!,
+      username: profile.username,
+      role: profile.role as "cliente" | "vendedor",
       avatarUrl: profile.avatar_url ?? undefined,
     };
   }
@@ -2061,28 +2815,33 @@ export class SupabaseAuthRepository implements IAuthRepository {
     email: string,
     password: string,
     username: string,
-    role: 'vendedor' | 'cliente'
+    role: "vendedor" | "cliente",
   ): Promise<User> {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) throw error;
-    if (!data.user) throw new Error('No se pudo crear el usuario');
+    if (!data.user) throw new Error("No se pudo crear el usuario");
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: data.user.id,
-        username,
-        role,
-      });
+    const { error: profileError } = await supabase.from("profiles").upsert({
+      id: data.user.id,
+      username,
+      role,
+    });
 
     if (profileError) throw new Error(profileError.message);
 
     return {
-      id:       data.user.id,
-      email:    data.user.email!,
+      id: data.user.id,
+      email: data.user.email!,
       username,
       role,
     };
+  }
+
+  async resetPassword(email: string, redirectTo: string): Promise<void> {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+    if (error) throw error;
   }
 
   async logout(): Promise<void> {
@@ -2091,40 +2850,47 @@ export class SupabaseAuthRepository implements IAuthRepository {
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
     if (error || !user) return null;
 
     const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('username, avatar_url, role')
-      .eq('id', user.id)
+      .from("profiles")
+      .select("username, avatar_url, role")
+      .eq("id", user.id)
       .single();
 
     if (profileError || !profile) return null;
 
     return {
-      id:       user.id,
-      email:    user.email!,
+      id: user.id,
+      email: user.email!,
       username: profile.username,
-      role:     profile.role as 'cliente' | 'vendedor',
+      role: profile.role as "cliente" | "vendedor",
       avatarUrl: profile.avatar_url ?? undefined,
     };
   }
 }
 
+
 ================================================
 📄 ARCHIVO: src\features\auth\presentation\hooks\useAuth.ts
 ================================================
 
-import { useMutation } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
-import { LoginUseCase } from '../../application/use-cases/LoginUseCase';
-import { RegisterUseCase } from '../../application/use-cases/RegisterUseCase';
-import { SupabaseAuthRepository } from '../../infrastructure/repositories/SupabaseAuthRepository';
-import { useAuthStore } from '../store/authStore';
+import { useMutation } from "@tanstack/react-query";
+import { makeRedirectUri } from "expo-auth-session";
+import { useRouter } from "expo-router";
+import { LoginUseCase } from "../../application/use-cases/LoginUseCase";
+import { RegisterUseCase } from "../../application/use-cases/RegisterUseCase";
+import { ResetPasswordUseCase } from "../../application/use-cases/ResetPasswordUseCase";
+import { SupabaseAuthRepository } from "../../infrastructure/repositories/SupabaseAuthRepository";
+import { useAuthStore } from "../store/authStore";
 
-const authRepo     = new SupabaseAuthRepository();
+const authRepo = new SupabaseAuthRepository();
 const loginUseCase = new LoginUseCase(authRepo);
+const resetPasswordUseCase = new ResetPasswordUseCase(authRepo);
 const registerUseCase = new RegisterUseCase(authRepo);
 
 export function useAuth() {
@@ -2134,30 +2900,177 @@ export function useAuth() {
   const loginMutation = useMutation({
     mutationFn: ({ email, password }: { email: string; password: string }) =>
       loginUseCase.execute(email, password),
-    onSuccess: (u) => { setUser(u); router.replace('/(app)'); },
+    onSuccess: (u) => {
+      setUser(u);
+      router.replace("/(app)");
+    },
   });
 
   const registerMutation = useMutation({
-    mutationFn: ({ email, password, username, role }: {
-      email: string; password: string; username: string; role: 'vendedor' | 'cliente';
+    mutationFn: ({
+      email,
+      password,
+      username,
+      role,
+    }: {
+      email: string;
+      password: string;
+      username: string;
+      role: "vendedor" | "cliente";
     }) => registerUseCase.execute(email, password, username, role),
-    onSuccess: (u) => { setUser(u); router.replace('/(app)'); },
+    onSuccess: (u) => {
+      setUser(u);
+      router.replace("/(app)");
+    },
+  });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: ({ email }: { email: string }) => {
+      const redirectTo = makeRedirectUri({
+        scheme: "michatapp",
+        path: "auth/callback",
+      });
+      return resetPasswordUseCase.execute(email, redirectTo);
+    },
   });
 
   const logout = async () => {
-    try { await authRepo.logout(); }
-    finally { setUser(null); router.replace('/(auth)/login'); }
+    try {
+      await authRepo.logout();
+    } finally {
+      setUser(null);
+      router.replace("/(auth)/login");
+    }
   };
 
   return {
     user,
-    login:      loginMutation.mutate,
-    register:   registerMutation.mutate,
+    login: loginMutation.mutate,
+    resetPassword: resetPasswordMutation.mutateAsync,
+    register: registerMutation.mutate,
     logout,
-    isLoading:  loginMutation.isPending || registerMutation.isPending,
-    error:      loginMutation.error?.message ?? registerMutation.error?.message ?? null,
+    isLoading: loginMutation.isPending || registerMutation.isPending,
+    isResettingPassword: resetPasswordMutation.isPending,
+    error:
+      loginMutation.error?.message ?? registerMutation.error?.message ?? null,
+    resetPasswordError: resetPasswordMutation.error?.message ?? null,
   };
 }
+
+
+================================================
+📄 ARCHIVO: src\features\auth\presentation\hooks\useGoogleLogin.ts
+================================================
+
+import { SESSION_QUERY_KEY } from "@features/session/model/useSession";
+import { supabase } from "@shared/infrastructure/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { makeRedirectUri } from "expo-auth-session";
+import { useRouter } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
+import { useState } from "react";
+import { SupabaseAuthRepository } from "../../infrastructure/repositories/SupabaseAuthRepository";
+import { useAuthStore } from "../store/authStore";
+
+WebBrowser.maybeCompleteAuthSession();
+
+const authRepo = new SupabaseAuthRepository();
+
+export const useGoogleLogin = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { setUser } = useAuthStore();
+
+  const loginWithGoogle = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const redirectTo = makeRedirectUri({
+        scheme: "michatapp",
+        path: "auth/callback",
+      });
+
+      const { data, error: signInError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          flowType: "pkce",
+        } as any,
+      });
+
+      if (signInError) throw signInError;
+      if (!data.url) throw new Error("No se pudo iniciar el flujo de Google");
+
+      const result = await WebBrowser.openAuthSessionAsync(
+        data.url,
+        redirectTo,
+      );
+
+      if (result.type !== "success") {
+        throw new Error("Inicio de sesión con Google cancelado");
+      }
+
+      console.log("Google OAuth result.url:", result.url);
+      const url = new URL(result.url);
+      const code = url.searchParams.get("code");
+      console.log("Google OAuth code:", code);
+
+      if (!code) {
+        throw new Error("No se recibió code");
+      }
+
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.exchangeCodeForSession(code);
+
+      console.log("Google OAuth sessionData:", sessionData);
+
+      if (sessionError) throw sessionError;
+      if (!sessionData.session) {
+        throw new Error("No se pudo crear la sesión");
+      }
+
+      queryClient.setQueryData(SESSION_QUERY_KEY, sessionData.session);
+
+      const currentUser = await authRepo.getCurrentUser();
+      const fallbackUser = sessionData.session.user;
+      const user = currentUser ?? {
+        id: fallbackUser.id,
+        email: fallbackUser.email ?? "",
+        username:
+          fallbackUser.email?.split("@")[0] ??
+          fallbackUser.user_metadata?.full_name ??
+          "usuario",
+        role: "cliente" as const,
+        avatarUrl: fallbackUser.user_metadata?.avatar_url ?? undefined,
+      };
+
+      if (!currentUser && fallbackUser.email) {
+        await supabase.from("profiles").upsert({
+          id: fallbackUser.id,
+          username: user.username,
+          role: user.role,
+          avatar_url: user.avatarUrl,
+        });
+      }
+
+      setUser(user);
+      router.replace("/home" as never);
+    } catch (e: unknown) {
+      const message =
+        e instanceof Error ? e.message : "Error inesperado con Google";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return { loginWithGoogle, loading, error };
+};
+
 
 ================================================
 📄 ARCHIVO: src\features\auth\presentation\store\authStore.ts
@@ -2569,6 +3482,7 @@ import { SupabaseChatRepository } from '@features/chat/infrastructure/repositori
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+//const chatRepo = new AppwriteChatRepository();
 const chatRepo        = new SupabaseChatRepository();
 const getMessagesUseCase  = new GetMessagesUseCase(chatRepo);
 const sendMessageUseCase  = new SendMessageUseCase(chatRepo);
@@ -2655,6 +3569,7 @@ import { Room } from "@features/chat/domain/entities/Message";
 import { SupabaseChatRepository } from "@features/chat/infrastructure/repositories/SupabaseChatRepository";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+//const chatRepo = new AppwriteChatRepository();
 const chatRepo = new SupabaseChatRepository();
 const createRoomUseCase = new CreateRoomUseCase(chatRepo);
 
@@ -2683,6 +3598,23 @@ export function useRooms() {
     createError: createMutation.error?.message ?? null,
   };
 }
+
+================================================
+📄 ARCHIVO: src\features\session\model\useSession.ts
+================================================
+
+import { useQuery } from "@tanstack/react-query";
+
+export const SESSION_QUERY_KEY = ["session"] as const;
+
+export function useSession() {
+  return useQuery({
+    queryKey: SESSION_QUERY_KEY,
+    enabled: false,
+    queryFn: async () => null,
+  });
+}
+
 
 ================================================
 📄 ARCHIVO: src\shared\domain\errors\AppError.ts
