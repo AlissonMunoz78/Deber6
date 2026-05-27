@@ -131,7 +131,7 @@ export default function LoginScreen() {
   );
 }
 
-const CORAL = "#FF385C";
+const CORAL = "#A86A5A";
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: "#FFFFFF" },
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: "#a52a3adb",
+    backgroundColor: "rgba(167, 68, 34, 0.38)",
     opacity: 0.5,
   },
   blobBottomLeft: {
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     width: 240,
     height: 240,
     borderRadius: 120,
-    backgroundColor: "#a52a3adb",
+    backgroundColor: "rgba(167, 68, 34, 0.38)",
     opacity: 0.6,
   },
 
@@ -174,7 +174,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
     marginBottom: 4,
   },
-  subtitle: { fontSize: 16, fontWeight: "500", color: "#717171" },
+  subtitle: { fontSize: 16, fontWeight: "500", color: "#b54949" },
 
   errorBox: {
     backgroundColor: "#FFF0F2",

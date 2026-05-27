@@ -80,13 +80,13 @@ export default function RegisterScreen() {
             onPress={() => setRole("cliente")}
           >
             {role === "cliente" && (
-              <IconSymbol name="checkmark" color="#00A699" size={14} />
+              <IconSymbol name="checkmark" color="#7D9BAB" size={14} />
             )}
-            <IconSymbol name="cart.fill" color="#00A699" size={28} />
+            <IconSymbol name="cart.fill" color="#7D9BAB" size={28} />
             <Text
               style={[
                 styles.roleCardTitle,
-                role === "cliente" && { color: "#00A699" },
+                role === "cliente" && { color: "#7D9BAB" },
               ]}
             >
               CLIENTE
@@ -104,13 +104,13 @@ export default function RegisterScreen() {
             onPress={() => setRole("vendedor")}
           >
             {role === "vendedor" && (
-              <IconSymbol name="checkmark" color="#FF385C" size={14} />
+              <IconSymbol name="checkmark" color="#A86A5A" size={14} />
             )}
-            <IconSymbol name="bag.fill" color="#FF385C" size={28} />
+            <IconSymbol name="bag.fill" color="#A86A5A" size={28} />
             <Text
               style={[
                 styles.roleCardTitle,
-                role === "vendedor" && { color: "#FF385C" },
+                role === "vendedor" && { color: "#A86A5A" },
               ]}
             >
               VENDEDOR
@@ -187,7 +187,7 @@ export default function RegisterScreen() {
   );
 }
 
-const CORAL = "#FF385C";
+const CORAL = "#A86A5A";
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: "#FCFAF8" },
@@ -229,12 +229,12 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   roleCardActiveTeal: {
-    borderColor: "#00A699",
-    backgroundColor: "rgba(0,166,153,0.04)",
+    borderColor: "#7D9BAB",
+    backgroundColor: "rgba(125,155,171,0.06)",
   },
   roleCardActiveCoral: {
     borderColor: CORAL,
-    backgroundColor: "rgba(255,56,92,0.04)",
+    backgroundColor: "rgba(168,106,90,0.06)",
   },
   roleCheck: {
     position: "absolute",

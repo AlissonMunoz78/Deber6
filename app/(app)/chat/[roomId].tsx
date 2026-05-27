@@ -18,8 +18,8 @@ import {
 } from "react-native";
 import { IconSymbol } from "../../../components/ui/icon-symbol";
 
-const CORAL = "#FF385C";
-const TEAL = "#00A699";
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function ChatScreen() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: "#FF385C",
+    backgroundColor: "#A86A5A",
     justifyContent: "center",
     alignItems: "center",
   },

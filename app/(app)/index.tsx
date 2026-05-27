@@ -16,8 +16,8 @@ import {
 import { IconSymbol } from "../../components/ui/icon-symbol";
 import { TEXT_SECONDARY } from "../../src/constants/colors";
 
-const CORAL = "#FF385C";
-const TEAL = "#00A699";
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function RoomsScreen() {
   const { rooms, isLoading, createRoom, isCreating, createError } = useRooms();

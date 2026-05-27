@@ -4,8 +4,8 @@ import { Stack } from "expo-router";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { IconSymbol } from "../../components/ui/icon-symbol";
 
-const CORAL = "#FF385C";
-const TEAL = "#00A699";
+const CORAL = "#A86A5A";
+const TEAL = "#7D9BAB";
 
 export default function AppLayout() {
   const { logout } = useAuth();
