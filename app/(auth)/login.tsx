@@ -14,11 +14,53 @@ import {
   View,
 } from "react-native";
 import { IconSymbol } from "../../components/ui/icon-symbol";
+import { useGoogleLogin } from "../../src/features/auth/presentation/hooks/useGoogleLogin";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { login, isLoading, error } = useAuth();
+  const [resetFeedback, setResetFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const {
+    login,
+    resetPassword,
+    isLoading,
+    isResettingPassword,
+    error,
+    resetPasswordError,
+  } = useAuth();
+  const {
+    loginWithGoogle,
+    loading: isGoogleLoading,
+    error: googleError,
+  } = useGoogleLogin();
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setResetFeedback({
+        type: "error",
+        message: "Ingresa tu correo para recuperar la contraseña.",
+      });
+      return;
+    }
+
+    try {
+      await resetPassword({ email: email.trim() });
+      setResetFeedback({
+        type: "success",
+        message:
+          "Revisa tu correo. Te enviamos las instrucciones para recuperar tu contraseña.",
+      });
+    } catch {
+      setResetFeedback({
+        type: "error",
+        message:
+          resetPasswordError ?? "No se pudo enviar el correo de recuperación.",
+      });
+    }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -88,7 +130,41 @@ export default function LoginScreen() {
               secureTextEntry
             />
           </View>
+
+          <TouchableOpacity
+            style={styles.forgotPasswordBtn}
+            onPress={handleForgotPassword}
+            disabled={isResettingPassword}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.forgotPasswordText}>
+              {isResettingPassword
+                ? "Enviando correo..."
+                : "¿Olvidaste tu contraseña?"}
+            </Text>
+          </TouchableOpacity>
         </View>
+
+        {resetFeedback && (
+          <View
+            style={[
+              styles.feedbackBox,
+              resetFeedback.type === "success"
+                ? styles.feedbackSuccess
+                : styles.feedbackError,
+            ]}
+          >
+            <Text
+              style={
+                resetFeedback.type === "success"
+                  ? styles.feedbackSuccessText
+                  : styles.feedbackErrorText
+              }
+            >
+              {resetFeedback.message}
+            </Text>
+          </View>
+        )}
 
         {/* Botón principal */}
         <TouchableOpacity
@@ -112,10 +188,25 @@ export default function LoginScreen() {
         </View>
 
         {/* Botón Google (visual) */}
-        <TouchableOpacity style={styles.btnGoogle} activeOpacity={0.85}>
-          <Text style={styles.btnGoogleIcon}>G</Text>
-          <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+        <TouchableOpacity
+          style={[styles.btnGoogle, isGoogleLoading && styles.btnDisabled]}
+          activeOpacity={0.85}
+          onPress={loginWithGoogle}
+          disabled={isGoogleLoading}
+        >
+          {isGoogleLoading ? (
+            <ActivityIndicator color="#222222" />
+          ) : (
+            <>
+              <Text style={styles.btnGoogleIcon}>G</Text>
+              <Text style={styles.btnGoogleText}>Continuar con Google</Text>
+            </>
+          )}
         </TouchableOpacity>
+
+        {googleError && (
+          <Text style={styles.googleErrorText}>{googleError}</Text>
+        )}
 
         {/* Link registro */}
         <Link href="/(auth)/register" asChild>
@@ -197,6 +288,31 @@ const styles = StyleSheet.create({
   },
   inputIcon: { fontSize: 18, width: 24, textAlign: "center" },
   input: { flex: 1, fontSize: 16, color: "#222222", paddingVertical: 0 },
+  forgotPasswordBtn: { marginTop: 12, alignSelf: "flex-end" },
+  forgotPasswordText: {
+    color: CORAL,
+    fontSize: 13,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+
+  feedbackBox: {
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 4,
+  },
+  feedbackSuccess: {
+    backgroundColor: "#EDF9F2",
+    borderLeftWidth: 3,
+    borderLeftColor: "#2E7D4D",
+  },
+  feedbackError: {
+    backgroundColor: "#FFF0F2",
+    borderLeftWidth: 3,
+    borderLeftColor: CORAL,
+  },
+  feedbackSuccessText: { color: "#2E7D4D", fontSize: 13, fontWeight: "500" },
+  feedbackErrorText: { color: CORAL, fontSize: 13, fontWeight: "500" },
 
   btnPrimary: {
     backgroundColor: CORAL,
@@ -247,6 +363,13 @@ const styles = StyleSheet.create({
   },
   btnGoogleIcon: { fontSize: 18, fontWeight: "900", color: "#f44242" },
   btnGoogleText: { fontSize: 16, fontWeight: "600", color: "#222222" },
+  googleErrorText: {
+    marginTop: 10,
+    fontSize: 13,
+    color: CORAL,
+    textAlign: "center",
+    fontWeight: "500",
+  },
 
   linkBtn: { marginTop: 28, alignItems: "center" },
   linkText: { fontSize: 14, color: "#222222" },

@@ -7,6 +7,7 @@ import { SupabaseChatRepository } from '@features/chat/infrastructure/repositori
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
+//const chatRepo = new AppwriteChatRepository();
 const chatRepo        = new SupabaseChatRepository();
 const getMessagesUseCase  = new GetMessagesUseCase(chatRepo);
 const sendMessageUseCase  = new SendMessageUseCase(chatRepo);
